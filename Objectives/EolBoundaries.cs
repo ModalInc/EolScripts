@@ -11,7 +11,7 @@ using InfServer.Logic;
 
 namespace InfServer.Script.GameType_Eol
 {
-    public class EolBoundaries
+    public partial class EolBoundaries
     {
         ///////////////////////////////////////////////////
         // Member Variables

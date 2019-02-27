@@ -12,7 +12,7 @@ namespace InfServer.Script.GameType_Eol
 {	// Script Class
     /// Provides the interface between the script and arena
     ///////////////////////////////////////////////////////
-    class Script_Eol : Scripts.IScript
+    partial class Script_Eol : Scripts.IScript
     {	///////////////////////////////////////////////////
         // Member Variables
         ///////////////////////////////////////////////////
@@ -28,7 +28,8 @@ namespace InfServer.Script.GameType_Eol
         private int _baseCashReward;            //Base Cash reward for HQs
         private int _basePointReward;           //Base Point reward for HQs
         private int _rewardInterval;            //The interval at which we reward for HQs
-        
+
+        public EolBoundaries _Eol;
 
         //Bots
         private int _lastBotCheck;
@@ -195,7 +196,7 @@ namespace InfServer.Script.GameType_Eol
             _minPlayers = Int32.MaxValue;
 
             //Load up our gametype handlers
-            _eol = new Eol(_arena);
+            _eol = new EolBoundaries(_arena, this);
 
             foreach (Arena.FlagState fs in _arena._flags.Values)
             {   //Determine the minimum number of players
