@@ -1,18 +1,22 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using InfServer.Logic;
 using InfServer.Game;
 using InfServer.Scripting;
 using InfServer.Bots;
 using InfServer.Protocol;
+
 using Assets;
-using InfServer.Logic;
 
 namespace InfServer.Script.GameType_Eol
 {	// Script Class
     /// Provides the interface between the script and arena
     ///////////////////////////////////////////////////////
-    partial class Script_Eol : Scripts.IScript
+    public partial class Script_Eol : Scripts.IScript
     {	///////////////////////////////////////////////////
         // Member Variables
         ///////////////////////////////////////////////////
@@ -21,15 +25,15 @@ namespace InfServer.Script.GameType_Eol
         private Points _points;                 //Our points
 
         //Headquarters
-        public Headquarters _hqs;              //Our headquarter tracker
+        public Headquarters _hqs;               //Our headquarter tracker
         private int[] _hqlevels;                //Bounty required to level up HQs
-        public int _hqVehId;                   //The vehicle ID of our HQs
+        public int _hqVehId;                    //The vehicle ID of our HQs
         private int _baseXPReward;              //Base XP reward for HQs
         private int _baseCashReward;            //Base Cash reward for HQs
         private int _basePointReward;           //Base Point reward for HQs
         private int _rewardInterval;            //The interval at which we reward for HQs
 
-        public EolBoundaries _Eol;
+        public EolBoundaries _eol;
 
         //Bots
         private int _lastBotCheck;
@@ -38,7 +42,7 @@ namespace InfServer.Script.GameType_Eol
         private int _lastHQReward;              //The tick at which we last checked for HQ rewards
 
         //KOTH
-        private Team _victoryKothTeam;				//The team currently winning!
+        private Team _victoryKothTeam;			//The team currently winning!
         private int _tickGameLastTickerUpdate;  //The tick at which the ticker was last updated
         private int _tickGameStarting;			//The tick at which the game began starting (0 == not initiated)
         private int _tickGameStart;				//The tick at which the game started (0 == stopped)
@@ -160,7 +164,6 @@ namespace InfServer.Script.GameType_Eol
 
             public CurrentSectors(short xxPos, short xyPos, short yxPos, short yyPos)
             {
-                usingit = false;
                 xx = xxPos;
                 xy = xyPos;
                 yx = yxPos;
@@ -175,10 +178,6 @@ namespace InfServer.Script.GameType_Eol
             { return yx; }
             public short getYY()
             { return yy; }
-            public bool busingit()
-            { return usingit; }
-            public void setusingit(bool busingit)
-            { usingit = busingit; }
         }
         
 

@@ -1,13 +1,17 @@
 ﻿using System;
-using System.Drawing;
 using System.Linq;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using InfServer.Logic;
 using InfServer.Game;
 using InfServer.Scripting;
 using InfServer.Bots;
 using InfServer.Protocol;
+
 using Assets;
-using InfServer.Logic;
 
 namespace InfServer.Script.GameType_Eol
 {
@@ -129,6 +133,7 @@ namespace InfServer.Script.GameType_Eol
             _sectorsToUseBC.Add(sectorD);
         }
 
+
         public bool Poll(int now)
         {
             int playing = _arena.PlayerCount;
@@ -146,20 +151,27 @@ namespace InfServer.Script.GameType_Eol
             {
                 gameSetup();
             }
+
             if ((now - _sectorDamage >= 1000) && (now - _tickSectorStart >= 5000))
             {
                 foreach (Player player in _arena.PlayersIngame)
                 {
-                    if (!player.inArea(_tLeft, _tRight, _bLeft, _bRight))
-                        player.heal(oobEffect, player);
+                    if (player._team._name != "spec")
+                        continue;
+                    Helpers.ObjectState state = player.getState();
+                    short px = state.positionX;
+                    short py = state.positionY;
+                    if(px <= _topLeftx || py <= _topLefty || px >= _bottomRightx || py >= _bottomRighty )
+                    { player.heal(oobEffect, player); }
                 }
                 _sectorDamage = now;
             }
 
-
         }
 
-        public bool whichSector()
+        
+
+        public void whichSector()
         {
             int playing = _arena.PlayerCount;
             if (playing < 30)
@@ -173,7 +185,7 @@ namespace InfServer.Script.GameType_Eol
                     _bLeft = aBL;
                     _tRight = aTR;
                     _bRight = aBR;
-                    Sectors(_tLeft, _bLeft, tRight, _bRight);
+                    Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.setTicker(1, 3, 15 * 100, "Radiation warning! Only sector " + sectorName + " is open");
                 }
                 else if (sectorName == sectorB) {
@@ -181,7 +193,7 @@ namespace InfServer.Script.GameType_Eol
                     _bLeft = bBL;
                     _tRight = bTR;
                     _bRight = bBR;
-                    Sectors(_tLeft, _bLeft, tRight, _bRight);
+                    Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.setTicker(1, 3, 15 * 100, "Radiation warning! Only sector " + sectorName + " is open");
                 }
                 else if (sectorName == sectorC) {
@@ -189,7 +201,7 @@ namespace InfServer.Script.GameType_Eol
                     _bLeft = cBL;
                     _tRight = cTR;
                     _bRight = cBR;
-                    Sectors(_tLeft, _bLeft, tRight, _bRight);
+                    Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.setTicker(1, 3, 15 * 100, "Radiation warning! Only sector " + sectorName + " is open");
                 }
                 else if (sectorName == sectorD) {
@@ -197,7 +209,7 @@ namespace InfServer.Script.GameType_Eol
                     _bLeft = dBL;
                     _tRight = dTR;
                     _bRight = dBR;
-                    Sectors(_tLeft, _bLeft, tRight, _bRight);
+                    Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.setTicker(1, 3, 15 * 100, "Radiation warning! Only sector " + sectorName + " is open");
                 }
             }
@@ -333,7 +345,7 @@ namespace InfServer.Script.GameType_Eol
                     else if (sectorName == "Sector B" || sectorName == "Sector C")
                     {
                         var sectUnder60 = _rand.Next(_sectorsToUseAD.Count);
-                        sectorNameExp = _sectorsToUseAD[sectUnder60.Item1];
+                        sectorNameExp = _sectorsToUseAD[sectUnder60];
                         _activeSectors.Add(sectorNameExp);
                         _arena.setTicker(1, 3, 15 * 100, "Radiation warning! Only sectors " + sectorName + "and " + sectorNameExp + " are open");
                         if (sectorName == "Sector B" && sectorNameExp == "Sector A")
