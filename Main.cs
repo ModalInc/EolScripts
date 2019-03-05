@@ -76,7 +76,7 @@ namespace InfServer.Script.GameType_Eol
             }
         }
         private Dictionary<Player, PlayerCrownStatus> _playerCrownStatus;
-        private List<Player> _activeCrowns //List of people with a crown
+        public List<Player> _activeCrowns //List of people with a crown
         {
             get { return _playerCrownStatus.Where(p => p.Value.crown).Select(p => p.Key).ToList(); }
         }

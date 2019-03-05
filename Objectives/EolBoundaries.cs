@@ -137,6 +137,10 @@ namespace InfServer.Script.GameType_Eol
         public bool Poll(int now)
         {
             int playing = _arena.PlayerCount;
+            if (playing > 0)
+            {
+                gameSetup();
+            }
             if (_arena._bGameRunning)
             {
                 if (!_bBoundariesDrawn)
@@ -146,23 +150,20 @@ namespace InfServer.Script.GameType_Eol
                 }
                 _bBoundariesDrawn = true;
             }
-            
-            if (playing > 0)
-            {
-                gameSetup();
-            }
+                        
 
             if ((now - _sectorDamage >= 1000) && (now - _tickSectorStart >= 5000))
             {
                 foreach (Player player in _arena.PlayersIngame)
                 {
                     if (player._team._name != "spec")
-                        continue;
-                    Helpers.ObjectState state = player.getState();
-                    short px = state.positionX;
-                    short py = state.positionY;
-                    if(px <= _topLeftx || py <= _topLefty || px >= _bottomRightx || py >= _bottomRighty )
-                    { player.heal(oobEffect, player); }
+                    {
+                        Helpers.ObjectState state = player.getState();
+                        short px = state.positionX;
+                        short py = state.positionY;
+                        if (px <= _topLeftx || py <= _topLefty || px >= _bottomRightx || py >= _bottomRighty)
+                        { player.heal(oobEffect, player); }
+                    }
                 }
                 _sectorDamage = now;
             }
@@ -417,7 +418,7 @@ namespace InfServer.Script.GameType_Eol
             byte fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000);
             fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000); // Right, Bottom to Top
             Helpers.Player_RouteExplosion(_arena.Players, 1452, _bottomRightx, _bottomRighty, 0, fireAngle, 0);
-            Helpers.Player_RouteExplosion(_arena.Players, 1469, bottomRightx, bottomRighty, 0, fireAngle, 0);// vis
+            Helpers.Player_RouteExplosion(_arena.Players, 1469, _bottomRightx, _bottomRighty, 0, fireAngle, 0);// vis
 
 
             state.positionX = _topRightx;
@@ -485,7 +486,7 @@ namespace InfServer.Script.GameType_Eol
 
             if (now - _tickGameStart > 216000000000 && playing > 0)
             {
-                if ( _basescript._activeCrowns.Count == 0)
+                if ( _baseScript._activeCrowns.Count == 0)
                 {
                     _activeSectors.Clear();
 
