@@ -1238,6 +1238,7 @@ namespace InfServer.Script.GameType_Eol
 
             //Spawn our flags!
             _arena.flagSpawn();
+            _eol.gameStart();
 
             //Create some points and subscribe to our point modification event
             _points = new Points(_arena.ActiveTeams, 0, 1000);
@@ -1262,6 +1263,7 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _healingDone = null;
+            _eol.gamesEnd();
             return true;
         }
 
@@ -1334,6 +1336,7 @@ namespace InfServer.Script.GameType_Eol
         {   //Game reset, perhaps start a new one
             _tickGameStart = 0;
             _tickGameStarting = 0;
+            _eol.gameReset();
 
             return true;
         }
