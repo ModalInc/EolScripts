@@ -86,7 +86,7 @@ namespace InfServer.Script.GameType_Eol
         }
         private List<Team> _crownTeams;
 
-        
+
 
         //Bots
         //Perimeter defense Bots
@@ -104,23 +104,23 @@ namespace InfServer.Script.GameType_Eol
         public const int _checkEngineer = 70000;                //The tick at which we check for an engineer
         protected int _tickLastEngineer = 0;                    //Last time we checked for an engineer
         protected int _tickLastCaptain = 0;                     //Last time we checked for a captain
-        protected int _lastHqCheck = 0;                         //Last time we check for bot hq's to build
+        protected int _lastPylonCheck = 0;                        //Last time we check for bot hq's to build
 
         public const int c_CaptainPathUpdateInterval = 5000;	//The amount of ticks before an engineer's combat bot updates it's path
 
         public Dictionary<Team, int> botCount;
         public Dictionary<Team, int> captainBots;
         public List<Team> engineerBots;
-        
-        
 
-        private class bothqsObject
+
+
+        private class pylonObject
         {
-            short x;      //X coordinate of bot hq's
-            short y;      //Y coordinate of bot hq's
-            bool exists; //Tells us if the bot hq exists on the map
+            short x;      //X coordinate of pylon
+            short y;      //Y coordinate of pylon
+            bool exists;//Tells us if the pylon exists on the map
 
-            public bothqsObject(short xPos, short yPos)
+            public pylonObject(short xPos, short yPos)
             {
                 exists = false;
                 x = xPos;
@@ -135,12 +135,20 @@ namespace InfServer.Script.GameType_Eol
             public void setExists(bool bExists)
             { exists = bExists; }
         }
-        private Dictionary<int, bothqsObject> _bothqs;
+        private Dictionary<int, pylonObject> _pylons;
+        private Dictionary<int, pylonObject> _pylonsA;
+        private Dictionary<int, pylonObject> _pylonsB;
+        private Dictionary<int, pylonObject> _pylonsC;
+        private Dictionary<int, pylonObject> _pylonsD;
+        private Dictionary<int, pylonObject> _pylonsAB;
+        private Dictionary<int, pylonObject> _pylonsCD;
+        private Dictionary<int, pylonObject> _pylonsAC;
+        private Dictionary<int, pylonObject> _pylonsBD;
 
-        public const int _maxEngineers = 3;                      //Maximum amount of engineer bots that will spawn in game
-        public int _currentEngineers = 0;                        //Current amount of engineer bots playing in the game
-        public int[] _lastbothqs;                                //Array of all bot hq's that are being used
-        public const int _bothqVehID = 622;                      //The vehicle ID of our bot hq points
+        public int _maxEngineers = 1;                           //Maximum amount of engineer bots that will spawn in game
+        public int _currentEngineers = 0;                       //Current amount of engineer bots playing in the game
+        public int[] _lastPylon;                                //Array of all pylons that are being used
+        public const int _pylonVehID = 622;                     //The vehicle ID of our bot hq points
 
         //Bot teams
         Team botTeam1;
@@ -153,32 +161,8 @@ namespace InfServer.Script.GameType_Eol
         public string botTeamName2 = "Bot Team - Deeks Bandits";
         public string botTeamName3 = "Bot Team - NewJack Raiders";
 
-        private List<CurrentSectors> _currentSectors;
-        private class CurrentSectors
-        {
-            short xx;      //XX coordinate of sector
-            short xy;      //XY coordinate of sector
-            short yx;      //YX coordinate of sector
-            short yy;      //YY coordinate of sector
-            bool usingit; //Tells us if the sector is in use on the map
-
-            public CurrentSectors(short xxPos, short xyPos, short yxPos, short yyPos)
-            {
-                xx = xxPos;
-                xy = xyPos;
-                yx = yxPos;
-                yy = yyPos;
-            }
-
-            public short getXX()
-            { return xx; }
-            public short getXY()
-            { return xy; }
-            public short getYX()
-            { return yx; }
-            public short getYY()
-            { return yy; }
-        }
+        private string _currentSector1;
+        private string _currentSector2;
         
 
 
@@ -226,15 +210,72 @@ namespace InfServer.Script.GameType_Eol
             botCount = new Dictionary<Team, int>(); //Counts of all defense bots and their teams
             engineerBots = new List<Team>();
             _currentEngineers = 0;  //The number of engineers currently alive
-            _bothqs = new Dictionary<int, bothqsObject>();
-            _bothqs.Add(0, new bothqsObject(4901, 4708)); // Sector A
-            _bothqs.Add(1, new bothqsObject(7461, 2276)); // Sector A
-            _bothqs.Add(0, new bothqsObject(4181, 9956)); // Sector B
-            _bothqs.Add(1, new bothqsObject(9573, 11332));// Sector B
-            _bothqs.Add(0, new bothqsObject(13765, 1236)); // Sector C
-            _bothqs.Add(1, new bothqsObject(17093, 5076)); // Sector C
-            _bothqs.Add(0, new bothqsObject(12549, 6708)); // Sector D
-            _bothqs.Add(1, new bothqsObject(16981, 10580)); // Sector D
+            _pylons = new Dictionary<int, pylonObject>();
+            _pylons.Add(0, new pylonObject(512, 480)); // Sector A
+            _pylons.Add(1, new pylonObject(2736, 5600)); // Sector A
+            _pylons.Add(2, new pylonObject(7856, 5504)); // Sector A
+            _pylons.Add(3, new pylonObject(5504, 7040)); // Sector B
+            _pylons.Add(4, new pylonObject(8304, 11008));// Sector B
+            _pylons.Add(5, new pylonObject(6784, 13808));// Sector B
+            _pylons.Add(6, new pylonObject(13765, 1236)); // Sector C
+            _pylons.Add(7, new pylonObject(17093, 5076)); // Sector C
+            _pylons.Add(8, new pylonObject(14960, 5040)); // Sector C
+            _pylons.Add(9, new pylonObject(12549, 6708)); // Sector D
+            _pylons.Add(10, new pylonObject(16981, 10580)); // Sector D
+            _pylons.Add(11, new pylonObject(18064, 7584)); // Sector D
+
+            _pylonsA = new Dictionary<int, pylonObject>();
+            _pylonsA.Add(0, new pylonObject(512, 480)); // Sector A
+            _pylonsA.Add(1, new pylonObject(2736, 5600)); // Sector A
+            _pylonsA.Add(2, new pylonObject(7856, 5504)); // Sector A
+
+            _pylonsB = new Dictionary<int, pylonObject>();
+            _pylonsB.Add(0, new pylonObject(5504, 7040)); // Sector B
+            _pylonsB.Add(1, new pylonObject(8304, 11008));// Sector B
+            _pylonsB.Add(2, new pylonObject(6784, 13808));// Sector B
+
+            _pylonsC = new Dictionary<int, pylonObject>();
+            _pylonsC.Add(0, new pylonObject(13765, 1236)); // Sector C
+            _pylonsC.Add(1, new pylonObject(17093, 5076)); // Sector C
+            _pylonsC.Add(2, new pylonObject(14960, 5040)); // Sector C
+
+            _pylonsD = new Dictionary<int, pylonObject>();
+            _pylonsD.Add(0, new pylonObject(12549, 6708)); // Sector D
+            _pylonsD.Add(1, new pylonObject(16981, 10580)); // Sector D
+            _pylonsD.Add(2, new pylonObject(18064, 7584)); // Sector D
+
+            _pylonsAB = new Dictionary<int, pylonObject>();
+            _pylonsAB.Add(0, new pylonObject(512, 480)); // Sector A
+            _pylonsAB.Add(1, new pylonObject(2736, 5600)); // Sector A
+            _pylonsAB.Add(2, new pylonObject(7856, 5504)); // Sector A
+            _pylonsAB.Add(3, new pylonObject(5504, 7040)); // Sector B
+            _pylonsAB.Add(4, new pylonObject(8304, 11008));// Sector B
+            _pylonsAB.Add(5, new pylonObject(6784, 13808));// Sector B
+
+            _pylonsAC = new Dictionary<int, pylonObject>();
+            _pylonsAC.Add(0, new pylonObject(512, 480)); // Sector A
+            _pylonsAC.Add(1, new pylonObject(2736, 5600)); // Sector A
+            _pylonsAC.Add(2, new pylonObject(7856, 5504)); // Sector A
+            _pylonsAC.Add(3, new pylonObject(13765, 1236)); // Sector C
+            _pylonsAC.Add(4, new pylonObject(17093, 5076)); // Sector C
+            _pylonsAC.Add(5, new pylonObject(14960, 5040)); // Sector C
+
+            _pylonsCD = new Dictionary<int, pylonObject>();
+            _pylonsCD.Add(0, new pylonObject(13765, 1236)); // Sector C
+            _pylonsCD.Add(1, new pylonObject(17093, 5076)); // Sector C
+            _pylonsCD.Add(2, new pylonObject(14960, 5040)); // Sector C
+            _pylonsCD.Add(3, new pylonObject(12549, 6708)); // Sector D
+            _pylonsCD.Add(4, new pylonObject(16981, 10580)); // Sector D
+            _pylonsCD.Add(5, new pylonObject(18064, 7584)); // Sector D
+
+            _pylonsBD = new Dictionary<int, pylonObject>();
+            _pylonsBD.Add(0, new pylonObject(5504, 7040)); // Sector B
+            _pylonsBD.Add(1, new pylonObject(8304, 11008));// Sector B
+            _pylonsBD.Add(2, new pylonObject(6784, 13808));// Sector B
+            _pylonsBD.Add(3, new pylonObject(12549, 6708)); // Sector D
+            _pylonsBD.Add(4, new pylonObject(16981, 10580)); // Sector D
+            _pylonsBD.Add(5, new pylonObject(18064, 7584)); // Sector D
+
 
             botTeam1 = new Team(_arena, _arena._server);
             botTeam1._name = botTeamName1;
@@ -258,7 +299,7 @@ namespace InfServer.Script.GameType_Eol
             botTeam3._isPrivate = true;
 
 
-            _lastbothqs = null;
+            _lastPylon = null;
             _minPlayers = Int32.MaxValue;
 
             foreach (Arena.FlagState fs in _arena._flags.Values)
@@ -290,15 +331,20 @@ namespace InfServer.Script.GameType_Eol
                 return true;
             _lastGameCheck = now;
 
-            //Should we spawn some bot hqs? Only check once an hour
-            if (now - _lastBotCheck > 36000000 && playing > 0)
+            if (_arena._bGameRunning)
             {
-                foreach (KeyValuePair<int, bothqsObject> obj in _bothqs)
+                _eol.Poll(now);
+            }
+
+            //Should we spawn some bot hqs? Only check once an hour
+            if (now - _lastPylonCheck > 36000000 && playing > 0)
+            {
+                foreach (KeyValuePair<int, pylonObject> obj in _pylons)
                 {
                     if (obj.Value.bExists())
                         continue;
 
-                    VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(_bothqVehID));
+                    VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(_pylonVehID));
                     Helpers.ObjectState newState = new Protocol.Helpers.ObjectState();
                     newState.positionX = obj.Value.getX();
                     newState.positionY = obj.Value.getY();
@@ -307,20 +353,16 @@ namespace InfServer.Script.GameType_Eol
 
                     obj.Value.setExists(true);
 
-                    //Put them all on one bot team since it doesn't matter who owns the bot hq points
+                    //Put them all on one bot team since it doesn't matter who owns the pylon
                     _arena.newVehicle(
                                 vehicle,
                                 botTeam1, null,
                                 newState);
                 }
 
-                _lastBotCheck = now;
+                _lastPylonCheck = now;
             }
 
-            if (_arena._bGameRunning)
-            {
-                _eol.Poll(now);
-            }
 
             //Should we reward yet for HQs?
             if (now - _lastHQReward > _rewardInterval)
@@ -446,23 +488,94 @@ namespace InfServer.Script.GameType_Eol
                     }
                     if (home == null)
                     {
-                        //Find a random bot hq point to make our new home
-                        IEnumerable<Vehicle> bothqs = _arena.Vehicles.Where(v => v._type.Id == _bothqVehID);
-                        if (bothqs.Count() != 0)
+                        //Find a random pylon to make our new home
+                        
+                        IEnumerable<Vehicle> pylons = _arena.Vehicles.Where(v => v._type.Id == _pylonVehID);
+                        if (pylons.Count() != 0)
                         {
-                            _rand = new Random(System.Environment.TickCount);
-                            int rand = _rand.Next(0, bothqs.Count());
+                            if(playing < 30)
+                            {
+                                _currentSector1 = _eol._activeSectors.First();
+                                if(_currentSector1 == "Sector A")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsA.Count());
 
-                            home = bothqs.ElementAt(rand);
+                                    home = pylons.ElementAt(rand);
+                                }
+                                else if (_currentSector1 == "Sector B")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsB.Count());
+
+                                    home = pylons.ElementAt(rand);
+                                }
+                                else if (_currentSector1 == "Sector C")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsC.Count());
+
+                                    home = pylons.ElementAt(rand);
+                                }
+                                else if (_currentSector1 == "Sector D")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsD.Count());
+
+                                    home = pylons.ElementAt(rand);
+                                }
+                            }
+                            if(playing >= 30 && playing < 60)
+                            {
+                                _currentSector1 = _eol._activeSectors.First();
+                                _currentSector2 = _eol._activeSectors.Skip(1).First();
+                                if (_currentSector1 == "Sector A" && _currentSector2 == "Sector B")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsAB.Count());
+
+                                    home = pylons.ElementAt(rand);
+                                }
+                                else if (_currentSector1 == "Sector A" && _currentSector2 == "Sector C")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsAC.Count());
+
+                                    home = pylons.ElementAt(rand);
+                                }
+                                else if (_currentSector1 == "Sector B" && _currentSector2 == "Sector D")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsBD.Count());
+
+                                    home = pylons.ElementAt(rand);
+                                }
+                                else if (_currentSector1 == "Sector C" && _currentSector2 == "Sector D")
+                                {
+                                    _rand = new Random(System.Environment.TickCount);
+                                    int rand = _rand.Next(0, _pylonsCD.Count());
+
+                                    home = pylons.ElementAt(rand);
+                                }
+                            }
+                            if(playing > 60)
+                            {
+                                _rand = new Random(System.Environment.TickCount);
+                                int rand = _rand.Next(0, _pylons.Count());
+
+                                home = pylons.ElementAt(rand);
+                            }
+
+
                         }
                     }
-                    //Just in case there are no bot hq points
+                    //Just in case there are no pylons
                     if (home != null)
                     {
-                        if (home._type.Id == _bothqVehID)
+                        if (home._type.Id == _pylonVehID)
                         {
                             Team team = null;
-                            _arena.sendArenaMessage("An engineer has been deployed to from Pioneer Station.");
+                            _arena.sendArenaMessage("An engineer has been deployed to from the orbiting Pioneer Station.");
                             if (_hqs[botTeam1] == null)
                                 team = botTeam1;
                             else if (_hqs[botTeam2] == null)
@@ -473,11 +586,11 @@ namespace InfServer.Script.GameType_Eol
                             Engineer George = _arena.newBot(typeof(Engineer), (ushort)300, team, null, home._state, this) as Engineer;
 
                             //Find the pylon we are about to destroy and mark it as nonexistent
-                            foreach (KeyValuePair<int, bothqsObject> obj in _bothqs)
+                            foreach (KeyValuePair<int, pylonObject> obj in _pylons)
                                 if (home._state.positionX == obj.Value.getX() && home._state.positionY == obj.Value.getY())
                                     obj.Value.setExists(false);
 
-                            //Destroy our hq point because we will use our hq to respawn and we dont want any other engineers grabbing this one
+                            //Destroy our pylon because we will use our hq to respawn and we dont want any other engineers grabbing this one
                             home.destroy(false);
 
                             //Keep track of the engineers
@@ -1545,6 +1658,14 @@ namespace InfServer.Script.GameType_Eol
         public bool playerBotKill(Player victim, Bot bot)
         {
             return true;
+        }
+
+        [Scripts.Event("Player.Portal")]
+        public bool playerPortal(Player player, LioInfo.Portal portal)
+        {
+            _eol.playerPortal(player, portal);
+            
+            return false;
         }
     }
 }

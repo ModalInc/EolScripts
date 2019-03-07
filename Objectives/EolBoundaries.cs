@@ -31,11 +31,13 @@ namespace InfServer.Script.GameType_Eol
         private int _sectorDamage;
         public bool _bBoundariesDrawn;
         public bool _gameBegun;
+        public string currentSector;
+
 
         private List<Team> _activeTeams;
-        private List<string> _activeSectors;
-        string sectorName;
-        string sectorNameExp;
+        public List<string> _activeSectors;
+        string sectUnder30;
+        string sectUnder60;
         Random _rand;
         private List<string> _fullSectors;
         private List<string> _sectorsToUse;
@@ -197,10 +199,12 @@ namespace InfServer.Script.GameType_Eol
             _sectorsToUseBC.Add(sectorD);
 
             List<string> _activeSectors = new List<string>();
+
             int playing = _arena.PlayerCount;
-            if (playing < 30)
+            if (playing < 30 && _activeSectors.Count() == 0)
             {
-                string sectUnder30 = _sectorsToUse.OrderBy(s => _rand.NextDouble()).First();
+                _baseScript._maxEngineers = 1;
+                sectUnder30 = _sectorsToUse.OrderBy(s => _rand.Next()).First();
                 _activeSectors.Add(sectUnder30);
                 if (sectUnder30 == sectorA) { 
                     _tLeft = aTL;
@@ -245,14 +249,16 @@ namespace InfServer.Script.GameType_Eol
 
             if (playing >= 30 && playing < 60)
             {
-                string sectUnder30 = _sectorsToUse.OrderBy(s => _rand.NextDouble()).First();
+                _baseScript._maxEngineers = 2;
+                
+                sectUnder30 = _sectorsToUse.OrderBy(s => _rand.Next()).First();
                 _activeSectors.Add(sectUnder30);
-                if (_activeSectors.Count == 0)
+                if (_activeSectors.Count() == 0)
                 {
-                    
+
                     if (sectUnder30 == "Sector A" || sectUnder30 == "Sector D")
                     {
-                        string sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.NextDouble()).First(); ;
+                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First(); ;
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
@@ -291,7 +297,7 @@ namespace InfServer.Script.GameType_Eol
                     }
                     else if (sectUnder30 == "Sector B" || sectUnder30 == "Sector C")
                     {
-                        string sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.NextDouble()).First(); ;
+                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First(); ;
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
@@ -333,7 +339,7 @@ namespace InfServer.Script.GameType_Eol
                 {
                     if (sectUnder30 == "Sector A" || sectUnder30 == "Sector D")
                     {
-                        string sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.NextDouble()).First(); ;
+                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First(); ;
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
@@ -372,7 +378,7 @@ namespace InfServer.Script.GameType_Eol
                     }
                     else if (sectUnder30 == "Sector B" || sectUnder30 == "Sector C")
                     {
-                        string sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.NextDouble()).First(); ;
+                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First(); ;
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
@@ -547,6 +553,38 @@ namespace InfServer.Script.GameType_Eol
             }
 
             return true;
+        }
+
+        public bool playerPortal(Player player, LioInfo.Portal portal)
+        {
+            
+            if (portal.GeneralData.Name.Contains("MapEnter"))
+            {
+                Helpers.ObjectState warpPoint;
+
+                flagPoint = _baseScript.findFlagWarp(player, true);
+
+                if(_activeSectors)
+                {
+                    warpPoint = _baseScript.findOpenWarp(player, _arena, flagPoint.positionX, 1744, _baseScript._playerWarpRadius);
+                }
+
+                if (warpPoint == null)
+                {
+                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                    player.sendMessage(-1, "Warp was blocked, please try again");
+                    return false;
+                }
+
+                _baseScript.warp(player, warpPoint);
+
+                if (_baseScript._lastSpawn.ContainsKey(player._alias))
+                    _baseScript._lastSpawn[player._alias] = warpPoint;
+                else
+                    _baseScript._lastSpawn.Add(player._alias, warpPoint);
+                return false;
+            }
+            return false;
         }
     }
 }
