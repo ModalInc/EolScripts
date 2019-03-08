@@ -44,6 +44,16 @@ namespace InfServer.Script.GameType_Eol
         private List<string> _sectorsToUseAD;
         private List<string> _sectorsToUseBC;
 
+        public List<WarpField> _warpsSecA;
+        public List<WarpField> _warpsSecB;
+        public List<WarpField> _warpsSecC;
+        public List<WarpField> _warpsSecD;
+        public List<WarpField> _warpsSecAB;
+        public List<WarpField> _warpsSecAC;
+        public List<WarpField> _warpsSecBD;
+        public List<WarpField> _warpsSecCD;
+        public List<WarpField> _warpsSecAll;
+
         private int _minPlayers = 1;				//The minimum amount of players
         private int _gameCount = 0;
         private ItemInfo.RepairItem oobEffect = AssetManager.Manager.getItemByID(919) as ItemInfo.RepairItem;
@@ -256,13 +266,13 @@ namespace InfServer.Script.GameType_Eol
                 if (_activeSectors.Count() == 0)
                 {
 
-                    if (sectUnder30 == "Sector A" || sectUnder30 == "Sector D")
+                    if (sectUnder30 == sectorA || sectUnder30 == sectorD)
                     {
-                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First(); ;
+                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        if (sectUnder30 == "Sector A" && sectUnder60 == "Sector B")
+                        if (sectUnder30 == sectorA && sectUnder60 == sectorB)
                         {
                             Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
@@ -270,7 +280,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = bBR;
                         }
-                        if (sectUnder30 == "Sector A" && sectUnder60 == "Sector C")
+                        if (sectUnder30 == sectorA && sectUnder60 == sectorC)
                         {
                             Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
@@ -278,7 +288,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = cBR;
                         }
-                        if (sectUnder30 == "Sector D" && sectUnder60 == "Sector C")
+                        if (sectUnder30 == sectorD && sectUnder60 == sectorC)
                         {
                             Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
@@ -286,7 +296,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = dBL;
                             _bRight = dBR;
                         }
-                        if (sectUnder30 == "Sector D" && sectUnder60 == "Sector B")
+                        if (sectUnder30 == sectorD && sectUnder60 == sectorB)
                         {
                             Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
@@ -295,13 +305,13 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                         }
                     }
-                    else if (sectUnder30 == "Sector B" || sectUnder30 == "Sector C")
+                    else if (sectUnder30 == sectorB || sectUnder30 == sectorC)
                     {
-                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First(); ;
+                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        if (sectUnder30 == "Sector B" && sectUnder60 == "Sector A")
+                        if (sectUnder30 == sectorB && sectUnder60 == sectorA)
                         {
                             Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
@@ -309,7 +319,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = bBR;
                         }
-                        if (sectUnder30 == "Sector B" && sectUnder60 == "Sector D")
+                        if (sectUnder30 == sectorB && sectUnder60 == sectorD)
                         {
                             Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
@@ -317,7 +327,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = bBL;
                             _bRight = dBR;
                         }
-                        if (sectUnder30 == "Sector C" && sectUnder60 == "Sector A")
+                        if (sectUnder30 == sectorC && sectUnder60 == sectorA)
                         {
                             Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
@@ -325,7 +335,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = cBR;
                         }
-                        if (sectUnder30 == "Sector C" && sectUnder60 == "Sector D")
+                        if (sectUnder30 == sectorC && sectUnder60 == sectorD)
                         {
                             Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
@@ -337,13 +347,13 @@ namespace InfServer.Script.GameType_Eol
                 }
                 else
                 {
-                    if (sectUnder30 == "Sector A" || sectUnder30 == "Sector D")
+                    if (sectUnder30 == sectorA || sectUnder30 == sectorD)
                     {
-                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First(); ;
+                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        if (sectUnder30 == "Sector A" && sectUnder60 == "Sector B")
+                        if (sectUnder30 == sectorA && sectUnder60 == sectorB)
                         {
                             Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
@@ -351,7 +361,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = bBR;
                         }
-                        if (sectUnder30 == "Sector A" && sectUnder60 == "Sector C")
+                        if (sectUnder30 == sectorA && sectUnder60 == sectorC)
                         {
                             Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
@@ -359,7 +369,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = cBR;
                         }
-                        if (sectUnder30 == "Sector D" && sectUnder60 == "Sector C")
+                        if (sectUnder30 == sectorD && sectUnder60 == sectorC)
                         {
                             Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
@@ -367,7 +377,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = dBL;
                             _bRight = dBR;
                         }
-                        if (sectUnder30 == "Sector D" && sectUnder60 == "Sector B")
+                        if (sectUnder30 == sectorD && sectUnder60 == sectorB)
                         {
                             Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
@@ -376,13 +386,13 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                         }
                     }
-                    else if (sectUnder30 == "Sector B" || sectUnder30 == "Sector C")
+                    else if (sectUnder30 == sectorB || sectUnder30 == sectorC)
                     {
-                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First(); ;
+                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
                         _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
                         _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        if (sectUnder30 == "Sector B" && sectUnder60 == "Sector A")
+                        if (sectUnder30 == sectorB && sectUnder60 == sectorA)
                         {
                             Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
@@ -390,7 +400,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = bBR;
                         }
-                        if (sectUnder30 == "Sector B" && sectUnder60 == "Sector D")
+                        if (sectUnder30 == sectorB && sectUnder60 == sectorD)
                         {
                             Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
@@ -398,7 +408,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = bBL;
                             _bRight = dBR;
                         }
-                        if (sectUnder30 == "Sector C" && sectUnder60 == "Sector A")
+                        if (sectUnder30 == sectorC && sectUnder60 == sectorA)
                         {
                             Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
@@ -406,7 +416,7 @@ namespace InfServer.Script.GameType_Eol
                             _bLeft = aBL;
                             _bRight = cBR;
                         }
-                        if (sectUnder30 == "Sector C" && sectUnder60 == "Sector D")
+                        if (sectUnder30 == sectorC && sectUnder60 == sectorD)
                         {
                             Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
@@ -528,6 +538,8 @@ namespace InfServer.Script.GameType_Eol
             _bBoundariesDrawn = false;
             _gameBegun = false;
             Sectors(emptyp, emptyp, emptyp, emptyp);
+            sectUnder30 = null;
+            sectUnder60 = null;
             return true;
         }
 
@@ -538,6 +550,8 @@ namespace InfServer.Script.GameType_Eol
             _bBoundariesDrawn = false;
             _gameBegun = false;
             Sectors(emptyp, emptyp, emptyp, emptyp);
+            sectUnder30 = null;
+            sectUnder60 = null;
             return true;
         }
 
@@ -557,32 +571,97 @@ namespace InfServer.Script.GameType_Eol
 
         public bool playerPortal(Player player, LioInfo.Portal portal)
         {
-            
+            LioInfo.WarpField _warp;
+            List<WarpField> _warpsSecA = new List<WarpField>();
+            _warpsSecA.ForEach(_warp.GeneralData.Name.Contains("SectorAWarp")).toList();
+            List<WarpField> _warpsSecB = new List<WarpField>();
+            _warpsSecB.ForEach(_warp.GeneralData.Name.Contains("SectorBWarp")).toList();
+            List<WarpField> _warpsSecC = new List<WarpField>();
+            _warpsSecC.ForEach(_warp.GeneralData.Name.Contains("SectorCWarp")).toList();
+            List<WarpField> _warpsSecD = new List<WarpField>();
+            _warpsSecD.ForEach(_warp.GeneralData.Name.Contains("SectorDWarp")).toList();
+            List<WarpField> _warpsSecAB = new List<WarpField>();
+            _warpsSecAB.ForEach(_warp.GeneralData.Name.Contains("SectorAWarp" || "SectorBWarp")).toList();
+            List<WarpField> _warpsSecAC = new List<WarpField>();
+            _warpsSecAC.ForEach(_warp.GeneralData.Name.Contains("SectorAWarp" || "SectorCWarp")).toList();
+            List<WarpField> _warpsSecBD = new List<WarpField>();
+            _warpsSecBD.ForEach(_warp.GeneralData.Name.Contains("SectorBWarp" || "SectorDWarp")).toList();
+            List<WarpField> _warpsSecCD = new List<WarpField>();
+            _warpsSecCD.ForEach(_warp.GeneralData.Name.Contains("SectorCWarp" || "SectorDWarp")).toList();
+            List<WarpField> _warpsSecAll = new List<WarpField>();
+            _warpsSecAll.ForEach(_warp.GeneralData.Name.Contains("AllSec")).toList();
+
             if (portal.GeneralData.Name.Contains("MapEnter"))
             {
                 Helpers.ObjectState warpPoint;
+                
 
-                flagPoint = _baseScript.findFlagWarp(player, true);
-
-                if(_activeSectors)
+                if(sectUnder30 == sectorA && sectUnder60 == null)
                 {
-                    warpPoint = _baseScript.findOpenWarp(player, _arena, flagPoint.positionX, 1744, _baseScript._playerWarpRadius);
+                    string warpToUse = _warpsSecA.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
                 }
-
-                if (warpPoint == null)
+                if (sectUnder30 == sectorB && sectUnder60 == null)
+                {
+                    string warpToUse = _warpsSecA.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorC && sectUnder60 == null)
+                {
+                    string warpToUse = _warpsSecA.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorD && sectUnder60 == null)
+                {
+                    string warpToUse = _warpsSecA.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorA && sectUnder60 == sectorB)
+                {
+                    string warpToUse = _warpsSecAB.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorA && sectUnder60 == sectorC)
+                {
+                    string warpToUse = _warpsSecAC.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorC && sectUnder60 == sectorD)
+                {
+                    string warpToUse = _warpsSecCD.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorB && sectUnder60 == sectorD)
+                {
+                    string warpToUse = _warpsSecBD.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorB && sectUnder60 == sectorA)
+                {
+                    string warpToUse = _warpsSecBA.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorC && sectUnder60 == sectorA)
+                {
+                    string warpToUse = _warpsSecAC.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorD && sectUnder60 == sectorC)
+                {
+                    string warpToUse = _warpsSecCD.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == sectorD && sectUnder60 == sectorB)
+                {
+                    string warpToUse = _warpsSecBD.OrderBy(s => _rand.Next()).First();
+                    player.warp(player, -1, warpToUse.positionX, warpToUse.positionY, warpToUse.Radius, warpToUse.invulnTime);
+                }
+                if (sectUnder30 == null)
                 {
                     Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
                     player.sendMessage(-1, "Warp was blocked, please try again");
                     return false;
                 }
-
-                _baseScript.warp(player, warpPoint);
-
-                if (_baseScript._lastSpawn.ContainsKey(player._alias))
-                    _baseScript._lastSpawn[player._alias] = warpPoint;
-                else
-                    _baseScript._lastSpawn.Add(player._alias, warpPoint);
-                return false;
             }
             return false;
         }

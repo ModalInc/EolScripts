@@ -1659,13 +1659,6 @@ namespace InfServer.Script.GameType_Eol
         {
             return true;
         }
-
-        [Scripts.Event("Player.Portal")]
-        public bool playerPortal(Player player, LioInfo.Portal portal)
-        {
-            _eol.playerPortal(player, portal);
-            
-            return false;
-        }
+        
     }
 }
