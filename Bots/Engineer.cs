@@ -24,7 +24,7 @@ namespace InfServer.Script.GameType_Eol
         ///////////////////////////////////////////////////
 
         protected SteeringController steering;	//System for controlling the bot's steering
-        protected Script_Eol eol;			//The CTFHQ script
+        protected Script_Eol _baseScript;			//The Eol script
         protected List<Vector3> _path;			//The path to our destination
 
         protected Vehicle _nextRet;             //The next turret we are running to
@@ -33,7 +33,7 @@ namespace InfServer.Script.GameType_Eol
         protected int _tickLastRet;             //Last time we ran to a ret
         protected int _tickLastHeal;            //Last time we healed a ret
         private float _seperation;
-        private bool _hq;                            //Tells us if HQ exists
+        private bool _hq;                       //Tells us if HQ exists
 
         ///////////////////////////////////////////////////
         // Member Functions
@@ -42,7 +42,7 @@ namespace InfServer.Script.GameType_Eol
         /// <summary>
         /// Generic constructor
         /// </summary>
-        public Engineer(VehInfo.Car type, Helpers.ObjectState state, Arena arena, Script_Eol _eol)
+        public Engineer(VehInfo.Car type, Helpers.ObjectState state, Arena arena, Script_Eol BaseScript)
             : base(type, state, arena,
                     new SteeringController(type, state, arena))
         {
@@ -54,7 +54,7 @@ namespace InfServer.Script.GameType_Eol
             if (type.InventoryItems[0] != 0)
                 _weapon.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
 
-            eol = _eol;
+            _baseScript = BaseScript;
             _tickLastRet = 0;
             _tickLastHeal = 0;
         }
@@ -68,14 +68,14 @@ namespace InfServer.Script.GameType_Eol
             {
                 steering.steerDelegate = null;
                 bCondemned = true;
-                eol._currentEngineers--;
-                eol.engineerBots.Remove(_team);
+                _baseScript._currentEngineers--;
+                _baseScript.engineerBots.Remove(_team);
                 return base.poll();
             }
 
             int now = Environment.TickCount;
 
-            IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == eol._hqVehId);
+            IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _baseScript._hqVehId);
             foreach (Vehicle hq in hqs)
             {
                 if (hq._team == _team)
@@ -104,18 +104,20 @@ namespace InfServer.Script.GameType_Eol
                 createVehicle(700, 25, 80, _team);
                 //Build four MGs around base
                 createVehicle(400, -75, 50, _team);
+                createVehicle(402, -45, 50, _team);
                 createVehicle(700, 75, -50, _team);
                 createVehicle(400, 75, 150, _team);
 
                 //Giving them some bounty ??based off population??
-                eol._hqs[_team].Bounty = 10000;
+
+                _baseScript._hqs[_team].Bounty = 10000;
 
                 //Captain dBot = _arena.newBot(typeof(Captain), (ushort)161, _team, null, _state, new object[] { this, null }) as Captain;
 
             }
 
             //Run around while healing to hopefully avoid being shot            
-            IEnumerable<Vehicle> turrets = _arena.Vehicles.Where(v => (v._type.Id == 400 || v._type.Id == 825 || v._type.Id == 700) && v._team == _team);
+            IEnumerable<Vehicle> turrets = _arena.Vehicles.Where(v => (v._type.Id == 400 || v._type.Id == 825 || v._type.Id == 700 || v._type.Id == 402) && v._team == _team);
             Random _rand = new Random(System.Environment.TickCount);
 
             //Only heal a ret once every 7 seconds

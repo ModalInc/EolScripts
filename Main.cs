@@ -34,6 +34,7 @@ namespace InfServer.Script.GameType_Eol
         private int _rewardInterval;            //The interval at which we reward for HQs
 
         public EolBoundaries _eol;
+        public Pylons _pylonsScr;
 
         //Bots
         private int _lastBotCheck;
@@ -49,8 +50,14 @@ namespace InfServer.Script.GameType_Eol
         private int _minPlayers;                //The minimum amount of players needed for a KOTH game
 
         //CTF
-
+        private int _jackpot;					//The game's jackpot so far
+        private bool _firstGame;
+        private Team _victoryTeam;				//The team currently winning!
+        private int _tickVictoryStart;			//The tick at which the victory countdown began
+        private int _tickNextVictoryNotice;		//The tick at which we will next indicate imminent victory
+        private int _victoryNotice;				//The number of victory notices we've done
         private int _lastFlagCheck;
+        private bool _gameWon = false;
 
         //Settings
         private int _pointSmallChange;                  //The small change to # of points (ex: kills, turret kills, etc)
@@ -85,8 +92,18 @@ namespace InfServer.Script.GameType_Eol
             get { return _playerCrownStatus.Where(p => !p.Value.crown).Select(p => p.Key).ToList(); }
         }
         private List<Team> _crownTeams;
+        
+        /// Stores our player streak information
+        private class PlayerStreak
+        {
+            public ItemInfo.Projectile lastUsedWeap { get; set; }
+            public int lastUsedWepKillCount { get; set; }
+            public long lastUsedWepTick { get; set; }
+            public int lastKillerCount { get; set; }
+        }
 
-
+        private Dictionary<string, PlayerStreak> killStreaks;
+        private Player lastKiller;
 
         //Bots
         //Perimeter defense Bots
@@ -104,7 +121,7 @@ namespace InfServer.Script.GameType_Eol
         public const int _checkEngineer = 70000;                //The tick at which we check for an engineer
         protected int _tickLastEngineer = 0;                    //Last time we checked for an engineer
         protected int _tickLastCaptain = 0;                     //Last time we checked for a captain
-        protected int _lastPylonCheck = 0;                        //Last time we check for bot hq's to build
+        protected int _lastPylonCheck = 0;                        //Last time we check for bot pylons to build hq's at.
 
         public const int c_CaptainPathUpdateInterval = 5000;	//The amount of ticks before an engineer's combat bot updates it's path
 
@@ -112,48 +129,15 @@ namespace InfServer.Script.GameType_Eol
         public Dictionary<Team, int> captainBots;
         public List<Team> engineerBots;
 
-
-
-        private class pylonObject
-        {
-            short x;      //X coordinate of pylon
-            short y;      //Y coordinate of pylon
-            bool exists;//Tells us if the pylon exists on the map
-
-            public pylonObject(short xPos, short yPos)
-            {
-                exists = false;
-                x = xPos;
-                y = yPos;
-            }
-            public short getX()
-            { return x; }
-            public short getY()
-            { return y; }
-            public bool bExists()
-            { return exists; }
-            public void setExists(bool bExists)
-            { exists = bExists; }
-        }
-        private Dictionary<int, pylonObject> _pylons;
-        private Dictionary<int, pylonObject> _pylonsA;
-        private Dictionary<int, pylonObject> _pylonsB;
-        private Dictionary<int, pylonObject> _pylonsC;
-        private Dictionary<int, pylonObject> _pylonsD;
-        private Dictionary<int, pylonObject> _pylonsAB;
-        private Dictionary<int, pylonObject> _pylonsCD;
-        private Dictionary<int, pylonObject> _pylonsAC;
-        private Dictionary<int, pylonObject> _pylonsBD;
-
         public int _maxEngineers = 1;                           //Maximum amount of engineer bots that will spawn in game
         public int _currentEngineers = 0;                       //Current amount of engineer bots playing in the game
         public int[] _lastPylon;                                //Array of all pylons that are being used
         public const int _pylonVehID = 622;                     //The vehicle ID of our bot hq points
 
         //Bot teams
-        Team botTeam1;
-        Team botTeam2;
-        Team botTeam3;
+        public Team botTeam1;
+        public Team botTeam2;
+        public Team botTeam3;
 
         Random _rand;
 
@@ -161,8 +145,8 @@ namespace InfServer.Script.GameType_Eol
         public string botTeamName2 = "Bot Team - Deeks Bandits";
         public string botTeamName3 = "Bot Team - NewJack Raiders";
 
-        private string _currentSector1;
-        private string _currentSector2;
+        public string _currentSector1;
+        public string _currentSector2;
         
 
 
@@ -177,24 +161,23 @@ namespace InfServer.Script.GameType_Eol
             _arena = invoker as Arena;
             _config = _arena._server._zoneConfig;
             _minPlayers = Int32.MaxValue;
-
             //Load up our gametype handlers
             _eol = new EolBoundaries(_arena, this);
+            _pylonsScr = new Pylons(_arena, this);
 
             foreach (Arena.FlagState fs in _arena._flags.Values)
-            {   //Determine the minimum number of players
+            {	//Determine the minimum number of players
                 if (fs.flag.FlagData.MinPlayerCount < _minPlayers)
                     _minPlayers = fs.flag.FlagData.MinPlayerCount;
 
                 //Register our flag change events
                 fs.TeamChange += onFlagChange;
             }
-
             if (_minPlayers == Int32.MaxValue)
                 //No flags? Run blank games
                 _minPlayers = 1;
+            killStreaks = new Dictionary<string, PlayerStreak>();
 
-            return true;
             //Headquarters stuff!
             _hqlevels = new int[] { 500, 1000, 2500, 5000, 10000, 15000, 20000, 25000, 30000, 35000 };
             _hqVehId = 620;
@@ -210,73 +193,6 @@ namespace InfServer.Script.GameType_Eol
             botCount = new Dictionary<Team, int>(); //Counts of all defense bots and their teams
             engineerBots = new List<Team>();
             _currentEngineers = 0;  //The number of engineers currently alive
-            _pylons = new Dictionary<int, pylonObject>();
-            _pylons.Add(0, new pylonObject(512, 480)); // Sector A
-            _pylons.Add(1, new pylonObject(2736, 5600)); // Sector A
-            _pylons.Add(2, new pylonObject(7856, 5504)); // Sector A
-            _pylons.Add(3, new pylonObject(5504, 7040)); // Sector B
-            _pylons.Add(4, new pylonObject(8304, 11008));// Sector B
-            _pylons.Add(5, new pylonObject(6784, 13808));// Sector B
-            _pylons.Add(6, new pylonObject(13765, 1236)); // Sector C
-            _pylons.Add(7, new pylonObject(17093, 5076)); // Sector C
-            _pylons.Add(8, new pylonObject(14960, 5040)); // Sector C
-            _pylons.Add(9, new pylonObject(12549, 6708)); // Sector D
-            _pylons.Add(10, new pylonObject(16981, 10580)); // Sector D
-            _pylons.Add(11, new pylonObject(18064, 7584)); // Sector D
-
-            _pylonsA = new Dictionary<int, pylonObject>();
-            _pylonsA.Add(0, new pylonObject(512, 480)); // Sector A
-            _pylonsA.Add(1, new pylonObject(2736, 5600)); // Sector A
-            _pylonsA.Add(2, new pylonObject(7856, 5504)); // Sector A
-
-            _pylonsB = new Dictionary<int, pylonObject>();
-            _pylonsB.Add(0, new pylonObject(5504, 7040)); // Sector B
-            _pylonsB.Add(1, new pylonObject(8304, 11008));// Sector B
-            _pylonsB.Add(2, new pylonObject(6784, 13808));// Sector B
-
-            _pylonsC = new Dictionary<int, pylonObject>();
-            _pylonsC.Add(0, new pylonObject(13765, 1236)); // Sector C
-            _pylonsC.Add(1, new pylonObject(17093, 5076)); // Sector C
-            _pylonsC.Add(2, new pylonObject(14960, 5040)); // Sector C
-
-            _pylonsD = new Dictionary<int, pylonObject>();
-            _pylonsD.Add(0, new pylonObject(12549, 6708)); // Sector D
-            _pylonsD.Add(1, new pylonObject(16981, 10580)); // Sector D
-            _pylonsD.Add(2, new pylonObject(18064, 7584)); // Sector D
-
-            _pylonsAB = new Dictionary<int, pylonObject>();
-            _pylonsAB.Add(0, new pylonObject(512, 480)); // Sector A
-            _pylonsAB.Add(1, new pylonObject(2736, 5600)); // Sector A
-            _pylonsAB.Add(2, new pylonObject(7856, 5504)); // Sector A
-            _pylonsAB.Add(3, new pylonObject(5504, 7040)); // Sector B
-            _pylonsAB.Add(4, new pylonObject(8304, 11008));// Sector B
-            _pylonsAB.Add(5, new pylonObject(6784, 13808));// Sector B
-
-            _pylonsAC = new Dictionary<int, pylonObject>();
-            _pylonsAC.Add(0, new pylonObject(512, 480)); // Sector A
-            _pylonsAC.Add(1, new pylonObject(2736, 5600)); // Sector A
-            _pylonsAC.Add(2, new pylonObject(7856, 5504)); // Sector A
-            _pylonsAC.Add(3, new pylonObject(13765, 1236)); // Sector C
-            _pylonsAC.Add(4, new pylonObject(17093, 5076)); // Sector C
-            _pylonsAC.Add(5, new pylonObject(14960, 5040)); // Sector C
-
-            _pylonsCD = new Dictionary<int, pylonObject>();
-            _pylonsCD.Add(0, new pylonObject(13765, 1236)); // Sector C
-            _pylonsCD.Add(1, new pylonObject(17093, 5076)); // Sector C
-            _pylonsCD.Add(2, new pylonObject(14960, 5040)); // Sector C
-            _pylonsCD.Add(3, new pylonObject(12549, 6708)); // Sector D
-            _pylonsCD.Add(4, new pylonObject(16981, 10580)); // Sector D
-            _pylonsCD.Add(5, new pylonObject(18064, 7584)); // Sector D
-
-            _pylonsBD = new Dictionary<int, pylonObject>();
-            _pylonsBD.Add(0, new pylonObject(5504, 7040)); // Sector B
-            _pylonsBD.Add(1, new pylonObject(8304, 11008));// Sector B
-            _pylonsBD.Add(2, new pylonObject(6784, 13808));// Sector B
-            _pylonsBD.Add(3, new pylonObject(12549, 6708)); // Sector D
-            _pylonsBD.Add(4, new pylonObject(16981, 10580)); // Sector D
-            _pylonsBD.Add(5, new pylonObject(18064, 7584)); // Sector D
-
-
             botTeam1 = new Team(_arena, _arena._server);
             botTeam1._name = botTeamName1;
             botTeam1._id = (short)_arena.Teams.Count();
@@ -298,23 +214,8 @@ namespace InfServer.Script.GameType_Eol
             botTeam3._owner = null;
             botTeam3._isPrivate = true;
 
-
-            _lastPylon = null;
-            _minPlayers = Int32.MaxValue;
-
-            foreach (Arena.FlagState fs in _arena._flags.Values)
-            {   //Determine the minimum number of players
-                if (fs.flag.FlagData.MinPlayerCount < _minPlayers)
-                    _minPlayers = fs.flag.FlagData.MinPlayerCount;
-
-                //Register our flag change events
-                fs.TeamChange += onFlagChange;
-            }
-
-            if (_minPlayers == Int32.MaxValue)
-                //No flags? Run blank games
-                _minPlayers = 1;
-
+            
+            _minPlayers = Int32.MaxValue;          
             return true;
         }
 
@@ -324,45 +225,60 @@ namespace InfServer.Script.GameType_Eol
         public bool poll()
         {	//Should we check game state yet?
             int now = Environment.TickCount;
-
+            if (_arena._bGameRunning)
+            {
+                _eol.Poll(now);
+                _pylonsScr.Poll(now);
+            }
+            UpdateCTFTickers();
+            UpdateKillStreaks();
             //Do we have enough people to start a game of KOTH?
             int playing = _arena.PlayerCount;
             if (now - _lastGameCheck <= Arena.gameCheckInterval)
                 return true;
             _lastGameCheck = now;
 
-            if (_arena._bGameRunning)
-            {
-                _eol.Poll(now);
+            if ((_tickGameStart == 0 || _tickGameStarting == 0) && playing < _minPlayers)
+            {   //Stop the game!
+                _arena.setTicker(1, 1, 0, "Not Enough Players for KOTH");
             }
+            //Do we have enough players to start a CTF game?
+            else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= _minPlayers)
+            {	//Great! Get going
+                _tickGameStarting = now;
+                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next CTF game: ",
+                    delegate ()
+                    {	//Trigger the game start
+                        _arena.gameStart();
+                    }
+                );
+            }
+            //Maybe the game is in progress...
+            else
+            {   //It is!
+                //The change to small points changes needs to be updated based on players in game constantly
+                _pointSmallChange = (int)Math.Ceiling((double)25 / _arena.PlayersIngame.Count());
+                _pointPeriodicChange = 1;
 
-            //Should we spawn some bot hqs? Only check once an hour
-            if (now - _lastPylonCheck > 36000000 && playing > 0)
-            {
-                foreach (KeyValuePair<int, pylonObject> obj in _pylons)
-                {
-                    if (obj.Value.bExists())
-                        continue;
+                //Let's update some points!
+                int flagdelay = 1000; //1000 = 1 second
+                if (now - _lastFlagCheck >= flagdelay)
+                {   //It's time for a flag update
 
-                    VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(_pylonVehID));
-                    Helpers.ObjectState newState = new Protocol.Helpers.ObjectState();
-                    newState.positionX = obj.Value.getX();
-                    newState.positionY = obj.Value.getY();
-                    newState.positionZ = 0;
-                    newState.yaw = 0;
+                    //Loop through every flag
+                    foreach (Arena.FlagState fs in _arena._flags.Values)
+                        //Add points for every flag they own
+                        foreach (Team t in _arena.Teams)
+                            if (t == fs.team && _points != null)
+                                _points[t] += _pointPeriodicChange;
 
-                    obj.Value.setExists(true);
-
-                    //Put them all on one bot team since it doesn't matter who owns the pylon
-                    _arena.newVehicle(
-                                vehicle,
-                                botTeam1, null,
-                                newState);
+                    //Update our tick
+                    _lastFlagCheck = now;
                 }
-
-                _lastPylonCheck = now;
             }
-
+            
+            
+            
 
             //Should we reward yet for HQs?
             if (now - _lastHQReward > _rewardInterval)
@@ -495,65 +411,65 @@ namespace InfServer.Script.GameType_Eol
                         {
                             if(playing < 30)
                             {
-                                _currentSector1 = _eol._activeSectors.First();
+                                _currentSector1 = _eol.sectUnder30;
                                 if(_currentSector1 == "Sector A")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsA.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsA.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
                                 else if (_currentSector1 == "Sector B")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsB.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsB.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
                                 else if (_currentSector1 == "Sector C")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsC.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsC.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
                                 else if (_currentSector1 == "Sector D")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsD.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsD.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
                             }
                             if(playing >= 30 && playing < 60)
                             {
-                                _currentSector1 = _eol._activeSectors.First();
-                                _currentSector2 = _eol._activeSectors.Skip(1).First();
+                                _currentSector1 = _eol.sectUnder30;
+                                _currentSector2 = _eol.sectUnder60;
                                 if (_currentSector1 == "Sector A" && _currentSector2 == "Sector B")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsAB.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsAB.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
                                 else if (_currentSector1 == "Sector A" && _currentSector2 == "Sector C")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsAC.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsAC.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
                                 else if (_currentSector1 == "Sector B" && _currentSector2 == "Sector D")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsBD.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsBD.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
                                 else if (_currentSector1 == "Sector C" && _currentSector2 == "Sector D")
                                 {
                                     _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, _pylonsCD.Count());
+                                    int rand = _rand.Next(0, _pylonsScr._pylonsCD.Count());
 
                                     home = pylons.ElementAt(rand);
                                 }
@@ -561,7 +477,7 @@ namespace InfServer.Script.GameType_Eol
                             if(playing > 60)
                             {
                                 _rand = new Random(System.Environment.TickCount);
-                                int rand = _rand.Next(0, _pylons.Count());
+                                int rand = _rand.Next(0, _pylonsScr._pylons.Count());
 
                                 home = pylons.ElementAt(rand);
                             }
@@ -572,48 +488,8 @@ namespace InfServer.Script.GameType_Eol
                     //Just in case there are no pylons
                     if (home != null)
                     {
-                        if (home._type.Id == _pylonVehID)
-                        {
-                            Team team = null;
-                            _arena.sendArenaMessage("An engineer has been deployed to from the orbiting Pioneer Station.");
-                            if (_hqs[botTeam1] == null)
-                                team = botTeam1;
-                            else if (_hqs[botTeam2] == null)
-                                team = botTeam2;
-                            else if (_hqs[botTeam3] == null)
-                                team = botTeam3;
-
-                            Engineer George = _arena.newBot(typeof(Engineer), (ushort)300, team, null, home._state, this) as Engineer;
-
-                            //Find the pylon we are about to destroy and mark it as nonexistent
-                            foreach (KeyValuePair<int, pylonObject> obj in _pylons)
-                                if (home._state.positionX == obj.Value.getX() && home._state.positionY == obj.Value.getY())
-                                    obj.Value.setExists(false);
-
-                            //Destroy our pylon because we will use our hq to respawn and we dont want any other engineers grabbing this one
-                            home.destroy(false);
-
-                            //Keep track of the engineers
-                            _currentEngineers++;
-                            engineerBots.Add(team);
-                        }
-
-                        if (home._type.Id == _hqVehId)
-                        {
-                            Team team = null;
-                            if (home._team == botTeam1)
-                                team = botTeam1;
-                            else if (home._team == botTeam2)
-                                team = botTeam2;
-                            else if (home._team == botTeam3)
-                                team = botTeam3;
-
-                            Engineer Filbert = _arena.newBot(typeof(Engineer), (ushort)300, team, null, home._state, this) as Engineer;
-
-                            _currentEngineers++;
-                            engineerBots.Add(team);
-                        }
-
+                        _pylonsScr.spawnEngyBot(home);
+                        
                     }
                 }
                 _tickLastEngineer = now;
@@ -628,49 +504,6 @@ namespace InfServer.Script.GameType_Eol
                 _crownTeams = new List<Team>();
             }
 
-            return true;
-
-            //Do we have enough players ingame?
-            
-            if ((_tickGameStart == 0 || _tickGameStarting == 0) && playing < 1)
-            {   //Stop the game!
-                _arena.setTicker(1, 1, 0, "Not Enough Players for CTF");
-                _arena.gameReset();
-            }
-            //Do we have enough players to start a game?
-            else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
-            {	//Great! Get going
-                _tickGameStarting = now;
-                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next CTF game: ",
-                    delegate ()
-                    {	//Trigger the game start
-                        _arena.gameStart();
-                    }
-                );
-            }
-            //Maybe the game is in progress...
-            else
-            {   //It is!
-                //The change to small points changes needs to be updated based on players in game constantly
-                _pointSmallChange = (int)Math.Ceiling((double)25 / _arena.PlayersIngame.Count());
-                _pointPeriodicChange = 1;
-
-                //Let's update some points!
-                int flagdelay = 1000; //1000 = 1 second
-                if (now - _lastFlagCheck >= flagdelay)
-                {   //It's time for a flag update
-
-                    //Loop through every flag
-                    foreach (Arena.FlagState fs in _arena._flags.Values)
-                        //Add points for every flag they own
-                        foreach (Team t in _arena.Teams)
-                            if (t == fs.team && _points != null)
-                                _points[t] += _pointPeriodicChange;
-
-                    //Update our tick
-                    _lastFlagCheck = now;
-                }
-            }
             return true;
             //Check for expiring crowners
             if (_tickGameStart > 0)
@@ -701,7 +534,7 @@ namespace InfServer.Script.GameType_Eol
                 }
                 else if (_activeCrowns.Count == 0)
                 {//There was a tie
-                    _arena.sendArenaMessage("There was no winner");
+                    _arena.sendArenaMessage("There was no KOTH winner");
                     resetKOTH();
                     return true;
                 }
@@ -719,7 +552,7 @@ namespace InfServer.Script.GameType_Eol
             //Do we have enough players to start a game of KOTH?
             if ((_tickGameStart == 0 || _tickGameStarting == 0) && _minPlayers > 0 && playing < _minPlayers)
             {	//Stop the game!
-                _arena.setTicker(1, 1, 0, "Not Enough Players");
+                _arena.setTicker(1, 1, 0, "Not Enough Players for KOTH");
                 resetKOTH();
             }
 
@@ -727,7 +560,7 @@ namespace InfServer.Script.GameType_Eol
             else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= _minPlayers)
             {	//Great! Get going
                 _tickGameStarting = now;
-                _arena.setTicker(1, 1, _config.king.startDelay * 100, "Next game: ",
+                _arena.setTicker(1, 1, _config.king.startDelay * 100, "Next KOTH game: ",
                     delegate()
                     {	//Trigger the game start
                         startKOTH();
@@ -736,48 +569,9 @@ namespace InfServer.Script.GameType_Eol
             }
 
             return true;
-
-            if ((_tickGameStart == 0 || _tickGameStarting == 0) && playing < _minPlayers)
-            {   //Stop the game!
-                _arena.setTicker(1, 1, 0, "Not Enough Players");
-                _arena.gameReset();
-            }
-            //Do we have enough players to start a game?
-            else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= _minPlayers)
-            {	//Great! Get going
-                _tickGameStarting = now;
-                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next game: ",
-                    delegate ()
-                    {	//Trigger the game start
-                        _arena.gameStart();
-                    }
-                );
-            }
-            //Maybe the game is in progress...
-            else
-            {   //It is!
-                //The change to small points changes needs to be updated based on players in game constantly
-                _pointSmallChange = (int)Math.Ceiling((double)25 / _arena.PlayersIngame.Count());
-                _pointPeriodicChange = 1;
-
-                //Let's update some points!
-                int flagdelay = 1000; //1000 = 1 second
-                if (now - _lastFlagCheck >= flagdelay)
-                {   //It's time for a flag update
-
-                    //Loop through every flag
-                    foreach (Arena.FlagState fs in _arena._flags.Values)
-                        //Add points for every flag they own
-                        foreach (Team t in _arena.Teams)
-                            if (t == fs.team && _points != null)
-                                _points[t] += _pointPeriodicChange;
-
-                    //Update our tick
-                    _lastFlagCheck = now;
-                }
-            }
-            return true;
         }
+
+        
         /// <summary>
         /// Called when adding a new bot to a bot team in game
         /// </summary>
@@ -802,15 +596,13 @@ namespace InfServer.Script.GameType_Eol
                 BasicDefense dBot = _arena.newBot(typeof(BasicDefense), (ushort)id, team, null, state, this, null) as BasicDefense;
             }
         }
-        
-        
 
         /// <summary>
         /// Called when KOTH game has ended
         /// </summary>
         public void endKOTH()
         {
-            _arena.sendArenaMessage("Game has ended");
+            _arena.sendArenaMessage("KOTH has ended");
 
             _tickGameStart = 0;
             _tickGameStarting = 0;
@@ -903,36 +695,6 @@ namespace InfServer.Script.GameType_Eol
                         return "";
                 });
             }
-
-            if (_points != null)
-            {
-                //Their teams points
-                _arena.setTicker(0, 1, 0,
-                    delegate (Player p)
-                    {
-                        //Update their ticker with current team points
-                        if (!_arena.DesiredTeams.Contains(p._team) && _points != null)
-                            return "";
-                        return "Your Team: " + _points[p._team] + " points";
-                    }
-                );
-                //Other teams points
-                _arena.setTicker(0, 2, 0,
-                    delegate (Player p)
-                    {
-                        //Update their ticker with every other teams points
-                        List<string> otherTeams = new List<string>();
-                        foreach (Team t in _arena.DesiredTeams)
-                            if (t != p._team)
-                                otherTeams.Add(t._name + ": " + _points[t] + " points");
-                        if (otherTeams.Count == 0)
-                            return "";
-                        return String.Join(", ", otherTeams.ToArray());
-                    }
-                );
-                //Point rewards
-                _arena.setTicker(0, 3, 0, "Kill rewards: " + _pointSmallChange + " points");
-            }
         }
 
         /// <summary>
@@ -956,78 +718,91 @@ namespace InfServer.Script.GameType_Eol
         {   //Reset the player's counter
             _playerCrownStatus[p].expireTime = Environment.TickCount + (_config.king.expireTime * 1000);
         }
+
         /// <summary>
         /// Called when a flag changes team
         /// </summary>
         public void onFlagChange(Arena.FlagState flag)
         {	//Does this team now have all the flags?
-            bool allFlags = true;
+            Team victoryTeam = flag.team;
 
-            if (flag.team == null || _arena._flags == null || _arena._flags.Count == 0)
-                return;
+
             foreach (Arena.FlagState fs in _arena._flags.Values)
-                if (fs.flag != null)
-                    if (fs.team != flag.team)
-                        allFlags = false;
+                if (fs.bActive && fs.team != victoryTeam)
+                    victoryTeam = null;
 
-            if (allFlags && _arena.DesiredTeams.Contains(flag.team))
-                _arena.sendArenaMessage(flag.team._name + " controls all the flags!", 20);
+            if (victoryTeam != null)
+            {	//Yes! Victory for them!
+                _arena.setTicker(1, 1, _config.flag.victoryHoldTime, "Victory in ");
+                _tickNextVictoryNotice = _tickVictoryStart = Environment.TickCount;
+                _victoryTeam = victoryTeam;
+            }
             else
-                _arena.sendArenaMessage(flag.team._name + " has captured " + flag.flag.GeneralData.Name + "!", 21);
-        }
+            {	//Aborted?
+                if (_victoryTeam != null && !_gameWon)
+                {
+                    _tickVictoryStart = 0;
+                    _tickNextVictoryNotice = 0;
+                    _victoryTeam = null;
+                    _victoryNotice = 0;
 
-        /// <summary>
-        /// Called when the specified team have won
-        /// </summary>
-        public void gameVictory(Team victors)
-        {	//Game is over.
-            _arena.sendArenaMessage(victors._name + " has reached " + _points[victors] + " points!", 13);
-
-            //Clear out all tickers we use in updateTickers (1,2,3)
-            for (int i = 1; i <= 3; i++)
-                _arena.setTicker(0, i, 0, "");
-
-            //Lets reward the teams and the MVP!
-            int rpoints = _arena._server._zoneConfig.flag.pointReward * _arena.PlayersIngame.Count();
-            int rcash = _arena._server._zoneConfig.flag.cashReward * _arena.PlayersIngame.Count();
-            int rexperience = _arena._server._zoneConfig.flag.experienceReward * _arena.PlayersIngame.Count();
-
-            //Give higher reward the more points they have
-            foreach (Team t in _arena.ActiveTeams)
-            {
-                foreach (Player p in t.ActivePlayers)
-                {   //Reward each player based on his teams performance
-                    int points = _points[t];
-                    double modifier = ((points / _points.MaxPoints) * 2) + 1;
-                    rpoints = Convert.ToInt32(rpoints * modifier);
-                    rcash = Convert.ToInt32(rcash * modifier);
-                    rexperience = Convert.ToInt32(rexperience * modifier);
-                    p.BonusPoints += rpoints;
-                    p.Cash += rcash;
-                    p.Experience += rexperience;
-                    p.sendMessage(0, String.Format("Personal Reward: Points={0} Cash={1} Experience={2}",
-                        rpoints, rcash, rexperience));
-                    p.syncState();
+                    _arena.sendArenaMessage("Victory has been aborted.", _config.flag.victoryAbortedBong);
+                    _arena.setTicker(1, 1, 0, "");
                 }
             }
-            //Stop the game
-            _arena.gameEnd();
         }
 
         /// <summary>
-        /// Called when a teams points have been modified
+        /// Finds a specific point within a radius with no physics for a player to warp to
         /// </summary>
-        public void onPointModify(Team team, int points)
+        /// <param name="arena"></param>
+        /// <param name="posX"></param>
+        /// <param name="posY"></param>
+        /// <param name="radius"></param>
+        /// <returns></returns>
+        public Helpers.ObjectState findOpenWarp(Player player, Arena _arena, short posX, short posY, int radius)
         {
-            //Update the tickers
-            updateTickers();
+            Helpers.ObjectState warpPoint = null;
+            
+            try
+            {
+                int blockedAttempts = 10;
 
-            //Check for game victory here
-            if (points >= _points.MaxPoints)
-                //They were the first team to reach max points!
-                gameVictory(team);
+                short pX;
+                short pY;
+
+                while (true)
+                {
+                    pX = posX;
+                    pY = posY;
+                    Helpers.randomPositionInArea(_arena, radius, ref pX, ref pY);
+                    if (_arena.getTile(pX, pY).Blocked)
+                    {
+                        blockedAttempts--;
+                        if (blockedAttempts <= 0)
+                            //Consider the area to be blocked
+                            return null;
+                        else
+                            continue;
+                    }
+                    warpPoint = new Helpers.ObjectState();
+                    warpPoint.positionX = pX;
+                    warpPoint.positionY = pY;
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.write(TLog.Exception, ex.Message);
+            }
+            return warpPoint;
         }
 
+        public void warp(Player player, Helpers.ObjectState warpTo)
+        {
+            player.warp(warpTo.positionX, warpTo.positionY);
+        }
+        
         /// <summary>
         /// Triggered when an HQ levels up (or down?)
         /// </summary>
@@ -1041,6 +816,169 @@ namespace InfServer.Script.GameType_Eol
             if (_hqs[team].Level == 10)
                 _arena.sendArenaMessage("&Headquarters - " + team._name + " HQ has reached the max level of " + _hqlevels.Count() + "!");
         }
+
+        #region Killstreak Updaters
+        private void UpdateCTFTickers()
+        {
+            List<Player> rankedPlayers = _arena.Players.ToList().OrderBy(player => (player.StatsCurrentGame == null ? 0 : player.StatsCurrentGame.deaths)).OrderByDescending(
+                player => (player.StatsCurrentGame == null ? 0 : player.StatsCurrentGame.kills)).ToList();
+            int idx = 3;
+            string format = "";
+            foreach (Player p in rankedPlayers)
+            {
+                if (p.StatsCurrentGame == null)
+                { continue; }
+                if (idx-- == 0)
+                {
+                    break;
+                }
+
+                switch (idx)
+                {
+                    case 2:
+                        format = string.Format("!1st: {0}(K={1} D={2}) ", p._alias, p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths);
+                        break;
+                    case 1:
+                        format = (format + string.Format("!2nd: {0}(K={1} D={2})", p._alias, p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths));
+                        break;
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(format))
+            { _arena.setTicker(1, 2, 0, format); }
+
+            _arena.setTicker(2, 3, 0, delegate (Player p)
+            {
+                if (p.StatsCurrentGame == null)
+                {
+                    return "Personal Score: Kills=0 - Deaths=0";
+                }
+                return string.Format("Personal Score: Kills={0} - Deaths={1}", p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths);
+            });
+        }
+
+        /// <summary>
+        /// Updates our players kill streak timer
+        /// </summary>
+        private void UpdateKillStreaks()
+        {
+            foreach (KeyValuePair<string, PlayerStreak> p in killStreaks)
+            {
+                if (p.Value.lastUsedWepTick == -1)
+                    continue;
+
+                if (Environment.TickCount - p.Value.lastUsedWepTick <= 0)
+                    ResetWeaponTicker(p.Key);
+            }
+        }
+
+        /// <summary>
+        /// Updates the last killer
+        /// </summary>
+        private void ResetKiller(Player killer)
+        {
+            lastKiller = killer;
+        }
+
+        /// <summary>
+        /// Resets the weapon ticker to default (Time Expired)
+        /// </summary>
+        private void ResetWeaponTicker(string targetAlias)
+        {
+            if (killStreaks.ContainsKey(targetAlias))
+            {
+                killStreaks[targetAlias].lastUsedWeap = null;
+                killStreaks[targetAlias].lastUsedWepKillCount = 0;
+                killStreaks[targetAlias].lastUsedWepTick = -1;
+            }
+        }
+
+        /// <summary>
+        /// Updates the killer and their kill counter
+        /// </summary>
+        private void UpdateKiller(Player killer)
+        {
+            if (killStreaks.ContainsKey(killer._alias))
+            {
+                killStreaks[killer._alias].lastKillerCount++;
+                switch (killStreaks[killer._alias].lastKillerCount)
+                {
+                    case 6:
+                        _arena.sendArenaMessage(string.Format("{0} is on fire!", killer._alias), 8);
+                        break;
+                    case 8:
+                        _arena.sendArenaMessage(string.Format("Someone kill {0}!", killer._alias), 9);
+                        break;
+                }
+            }
+            //Is this first blood?
+            if (lastKiller == null)
+            {
+                //It is, lets make the sound
+                _arena.sendArenaMessage(string.Format("{0} has drawn first blood.", killer._alias), 7);
+            }
+            lastKiller = killer;
+        }
+
+        /// <summary>
+        /// Updates the victim's kill streak and notifies the public
+        /// </summary>
+        private void UpdateDeath(Player victim, Player killer)
+        {
+            if (killStreaks.ContainsKey(victim._alias))
+            {
+                if (killStreaks[victim._alias].lastKillerCount >= 6)
+                {
+                    _arena.sendArenaMessage(string.Format("{0}", killer != null ? killer._alias + " has ended " + victim._alias + "'s kill streak." :
+                        victim._alias + "'s kill streak has ended."), 6);
+                }
+                killStreaks[victim._alias].lastKillerCount = 0;
+            }
+        }
+
+        /// <summary>
+        /// Updates the last fired weapon and its ticker
+        /// </summary>
+        private void UpdateWeapon(Player from, ItemInfo.Projectile usedWep, int aliveTime)
+        {
+            if (killStreaks.ContainsKey(from._alias))
+            {
+                killStreaks[from._alias].lastUsedWeap = usedWep;
+                killStreaks[from._alias].lastUsedWepTick = DateTime.Now.AddTicks(aliveTime).Ticks;
+            }
+        }
+
+        /// <summary>
+        /// Updates the last weapon used and kill count then announcing it to the public
+        /// </summary>
+        private void UpdateWeaponKill(Player from)
+        {
+            if (killStreaks.ContainsKey(from._alias))
+            {
+                if (killStreaks[from._alias].lastUsedWeap == null)
+                    return;
+
+                killStreaks[from._alias].lastUsedWepKillCount++;
+                ItemInfo.Projectile lastUsedWep = killStreaks[from._alias].lastUsedWeap;
+                switch (killStreaks[from._alias].lastUsedWepKillCount)
+                {
+                    case 2:
+                        _arena.sendArenaMessage(string.Format("{0} just got a double {1} kill.", from._alias, lastUsedWep.name), 17);
+                        break;
+                    case 3:
+                        _arena.sendArenaMessage(string.Format("{0} just got a triple {1} kill!", from._alias, lastUsedWep.name), 18);
+                        break;
+                    case 4:
+                        _arena.sendArenaMessage(string.Format("A 4 {0} kill by {0}?!?", lastUsedWep.name, from._alias), 19);
+                        break;
+                    case 5:
+                        _arena.sendArenaMessage(string.Format("Unbelievable! {0} with the 5 {1} kill?", from._alias, lastUsedWep.name), 20);
+                        break;
+                }
+            }
+        }
+        #endregion
+
+        #region Player Events
 
         /// <summary>
         /// Called when a player sends a chat command
@@ -1100,12 +1038,8 @@ namespace InfServer.Script.GameType_Eol
                     }
                 }
             }
-
-            
-
             return true;
         }
-
         /// <summary>
         /// Called when a player enters the arena
         /// </summary>
@@ -1125,6 +1059,17 @@ namespace InfServer.Script.GameType_Eol
                     _playerCrownStatus[player] = new PlayerCrownStatus(false);
                     Helpers.Player_Crowns(_arena, true, _activeCrowns, player);
                 }
+
+            //Add them to the list if its not in it
+            if (!killStreaks.ContainsKey(player._alias))
+            {
+                PlayerStreak temp = new PlayerStreak();
+                temp.lastKillerCount = 0;
+                temp.lastUsedWeap = null;
+                temp.lastUsedWepKillCount = 0;
+                temp.lastUsedWepTick = -1;
+                killStreaks.Add(player._alias, temp);
+            }
         }
 
         /// <summary>
@@ -1166,6 +1111,7 @@ namespace InfServer.Script.GameType_Eol
                         _arena.flagResetPlayer(player);
                 }
             }
+            return _eol.playerPortal(player, portal);
 
             return true;
         }
@@ -1334,8 +1280,30 @@ namespace InfServer.Script.GameType_Eol
                     return false;
                 }
             }
+            //Update our kill counter
+            UpdateDeath(victim, killer);
             return true;
             
+        }
+        /// <summary>
+        /// Triggered when one player has killed another
+        /// </summary>
+        [Scripts.Event("Player.PlayerKill")]
+        public bool playerPlayerKill(Player victim, Player killer)
+        {
+            //Update our kill streak
+            UpdateKiller(killer);
+
+            if (killStreaks.ContainsKey(victim._alias))
+            {
+                long wepTick = killStreaks[victim._alias].lastUsedWepTick;
+                if (wepTick != -1)
+                    UpdateWeaponKill(killer);
+            }
+            if (killer != null && victim != null && victim._bounty >= 300)
+                _arena.sendArenaMessage(String.Format("{0} has ended {1}'s bounty.", killer._alias, victim._alias), 5);
+
+            return true;
         }
         /// <summary>
 		/// Called when the game begins
@@ -1346,27 +1314,30 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStart = Environment.TickCount;
             _tickGameStarting = 0;
 
-            //Scramble the teams!
-            ScriptHelpers.scrambleTeams(_arena, 2, true);
-
             //Spawn our flags!
             _arena.flagSpawn();
             _eol.gameStart();
+            _pylonsScr.gameStart();
+            ResetKiller(null);
+            killStreaks.Clear();
 
-            //Create some points and subscribe to our point modification event
-            _points = new Points(_arena.ActiveTeams, 0, 1000);
-            _points.PointModify += onPointModify;
-
+            foreach (Player p in _arena.Players)
+            {
+                PlayerStreak temp = new PlayerStreak();
+                temp.lastKillerCount = 0;
+                temp.lastUsedWeap = null;
+                temp.lastUsedWepKillCount = 0;
+                temp.lastUsedWepTick = -1;
+                killStreaks.Add(p._alias, temp);
+            }
+            //Let everyone know
+            _arena.sendArenaMessage("CTF game has started!", _config.flag.resetBong);
             //Start keeping track of healing
             _healingDone = new Dictionary<Player, int>();
-
-            //Let everyone know
-            _arena.sendArenaMessage("Game has started! First team to " + _points.MaxPoints + " points wins!", _config.flag.resetBong);
             updateTickers();
-
             return true;
         }
-
+ 
         /// <summary>
         /// Called when the game ends
         /// </summary>
@@ -1377,6 +1348,8 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStarting = 0;
             _healingDone = null;
             _eol.gamesEnd();
+            _pylonsScr.gamesEnd();
+            
             return true;
         }
 
@@ -1450,7 +1423,7 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _eol.gameReset();
-
+            _pylonsScr.gameReset();
             return true;
         }
 
@@ -1509,11 +1482,21 @@ namespace InfServer.Script.GameType_Eol
         }
 
         /// <summary>
-		/// Triggered when a player wants to unspec and join the game
-		/// </summary>
-		[Scripts.Event("Player.JoinGame")]
+        /// Triggered when a player wants to unspec and join the game
+        /// </summary>
+        [Scripts.Event("Player.JoinGame")]
         public bool playerJoinGame(Player player)
         {
+            //Add them to the list if its not in it
+            if (!killStreaks.ContainsKey(player._alias))
+            {
+                PlayerStreak temp = new PlayerStreak();
+                temp.lastKillerCount = 0;
+                temp.lastUsedWeap = null;
+                temp.lastUsedWepKillCount = 0;
+                temp.lastUsedWepTick = -1;
+                killStreaks.Add(player._alias, temp);
+            }
             return true;
         }
 
@@ -1659,6 +1642,7 @@ namespace InfServer.Script.GameType_Eol
         {
             return true;
         }
-        
+        #endregion
+
     }
 }

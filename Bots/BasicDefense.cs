@@ -27,7 +27,7 @@ namespace InfServer.Script.GameType_Eol
         private Vehicle vHq;                    //Our HQ
 
         protected SteeringController steering;	//System for controlling the bot's steering
-        protected Script_Eol eol;			    //The Eol HQ script
+        protected Script_Eol _baseScript;			    //The Eol HQ script
         private Random _rand = new Random(System.Environment.TickCount);
         protected List<Vector3> _path;			//The path to our destination
         protected int _pathTarget;				//The next target node of the path
@@ -47,7 +47,7 @@ namespace InfServer.Script.GameType_Eol
         /// <summary>
         /// Generic constructor
         /// </summary>
-        public BasicDefense(VehInfo.Car type, Helpers.ObjectState state, Arena arena, Script_Eol _eol, Player _owner)
+        public BasicDefense(VehInfo.Car type, Helpers.ObjectState state, Arena arena, Script_Eol BaseScript, Player _owner)
             : base(type, state, arena,
                     new SteeringController(type, state, arena))
         {
@@ -71,7 +71,7 @@ namespace InfServer.Script.GameType_Eol
 
 
 
-            eol = _eol;
+            _baseScript = BaseScript;
             owner = _owner;
         }
         /// <summary>
@@ -84,49 +84,49 @@ namespace InfServer.Script.GameType_Eol
             if (IsDead)
             {//Dead
                 steering.steerDelegate = null; //Stop movements
-                eol.botCount[_team]--; //Signal to our captain we died
-                if (eol.botCount[_team] < 0)
-                    eol.botCount[_team] = 0;
+                _baseScript.botCount[_team]--; //Signal to our captain we died
+                if (_baseScript.botCount[_team] < 0)
+                    _baseScript.botCount[_team] = 0;
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
             }
 
             //Find out if our owner is gone
-            if (owner == null && !_team._name.Contains("Pirate Bot Team"))
+            if (owner == null && !_team._name.Contains("Bot Team -"))
             {//Find a new owner if not a bot team
                 if (_team.ActivePlayerCount >= 0)
                     owner = _team.ActivePlayers.Last();
                 else
                 {
                     kill(null);
-                    eol.botCount[_team] = 0; //Signal to our captain we died
+                    _baseScript.botCount[_team] = 0; //Signal to our captain we died
                     bCondemned = true; //Make sure the bot gets removed in polling
                     return base.poll();
                 }
             }
 
             //Find out if our captain died
-            if (!eol.captainBots.ContainsKey(_team))
+            if (!_baseScript.captainBots.ContainsKey(_team))
             {
                 kill(null);
-                eol.botCount[_team] = 0; //Signal to our captain we died
+                _baseScript.botCount[_team] = 0; //Signal to our captain we died
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
             }
 
             //Do we have an HQ to defend?
-            if (eol._hqs[_team] == null)
+            if (_baseScript._hqs[_team] == null)
             {
                 kill(null);
                 bCondemned = true;
-                eol.captainBots.Remove(_team);
+                _baseScript.captainBots.Remove(_team);
                 return false;
             }
 
             int now = Environment.TickCount;
 
             //Get a list of all the HQs in the arena
-            IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == eol._hqVehId);
+            IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _baseScript._hqVehId);
 
             //Find our HQ
             foreach (Vehicle v in hqs)

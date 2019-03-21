@@ -30,7 +30,7 @@ namespace InfServer.Script.GameType_Eol
         private Random _rand = new Random(System.Environment.TickCount);
 
         protected SteeringController steering;	//System for controlling the bot's steering
-        protected Script_Eol eol;			    //The eol script
+        protected Script_Eol _baseScript;		//The eol script
         protected List<Vector3> _path;			//The path to our destination
         protected int _pathTarget;				//The next target node of the path
         protected int _tickLastPath;			//The time at which we last made a path to the player   
@@ -46,7 +46,7 @@ namespace InfServer.Script.GameType_Eol
         /// <summary>
         /// Generic constructor
         /// </summary>
-        public Captain(VehInfo.Car type, Helpers.ObjectState state, Arena arena, Script_Eol _eol, Player _owner)
+        public Captain(VehInfo.Car type, Helpers.ObjectState state, Arena arena, Script_Eol BaseScript, Player _owner)
             : base(type, state, arena,
                     new SteeringController(type, state, arena))
         {
@@ -58,7 +58,7 @@ namespace InfServer.Script.GameType_Eol
             if (type.InventoryItems[0] != 0)
                 _weapon.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
 
-            eol = _eol;
+            _baseScript = BaseScript;
             owner = _owner;
             //figure out method to keep track of level if they died otherwise they will multiply bots - big bug
             lastCheckedLevel = 2; //They had to have gotton to level two to get a bot
@@ -74,13 +74,13 @@ namespace InfServer.Script.GameType_Eol
             if (IsDead)
             {//Dead
                 steering.steerDelegate = null; //Stop movements
-                eol.captainBots.Remove(_team); //Signal our game script that a captain needs to be respawned
+                _baseScript.captainBots.Remove(_team); //Signal our game script that a captain needs to be respawned
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
             }
 
             //Find out if our owner is gone and if he is destroy ourselves
-            if (owner == null && !_team._name.Contains("Pirate Bot Team"))
+            if (owner == null && !_team._name.Contains("Bot Team -"))
             {//Find a new owner if not a bot team
                 if (_team.ActivePlayerCount > 0)
                     owner = _team.ActivePlayers.Last();
@@ -88,24 +88,24 @@ namespace InfServer.Script.GameType_Eol
                 {
                     kill(null);
                     bCondemned = true;
-                    eol.captainBots.Remove(_team);
+                    _baseScript.captainBots.Remove(_team);
                     return false;
                 }
             }
 
             //Do we have an HQ to defend?
-            if (eol._hqs[_team] == null)
+            if (_baseScript._hqs[_team] == null)
             {
                 kill(null);
                 bCondemned = true;
-                eol.captainBots.Remove(_team);
+                _baseScript.captainBots.Remove(_team);
                 return false;
             }
 
             int now = Environment.TickCount;
 
             //Get a list of all the HQs in the arena
-            IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == eol._hqVehId);
+            IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _baseScript._hqVehId);
 
             //Find our HQ
             foreach (Vehicle v in hqs)
@@ -206,15 +206,15 @@ namespace InfServer.Script.GameType_Eol
                 if (distance <= 150)
                 {//Patrol
                     //Maintain defense bots
-                    if (owner != null && eol.botCount.ContainsKey(_team) && eol.botCount[_team] < eol._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
+                    if (owner != null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
                     {//Not a bot team
-                        eol.addBot(owner, _state, null);
+                        _baseScript.addBot(owner, _state, null);
                         _tickLastSpawn = now;
                     }
-                    else if (owner == null && eol.botCount.ContainsKey(_team) && eol.botCount[_team] < eol._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
+                    else if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
                     {//Bot team 
                         //should probably get rid of owner for all bots
-                        eol.addBot(null, _state, _team);
+                        _baseScript.addBot(null, _state, _team);
                         _tickLastSpawn = now;
                     }
                     //Patrol close to base
