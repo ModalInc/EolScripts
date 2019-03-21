@@ -34,6 +34,7 @@ namespace InfServer.Script.GameType_Eol
         public bool bOneSector;
         public bool bTwoSector;
         public bool bAllSectors;
+        public bool bbetweengames;
 
 
         private List<Team> _activeTeams;
@@ -195,6 +196,7 @@ namespace InfServer.Script.GameType_Eol
             bOneSector = false;
             bTwoSector = false;
             bAllSectors = false;
+            bbetweengames = false;
 
         }
 
@@ -202,7 +204,7 @@ namespace InfServer.Script.GameType_Eol
         public bool Poll(int now)
         {
             int playing = _arena.PlayerCount;
-            if (playing > 0)
+            if (playing >= 1)
             {
                 gameStart();
             }
@@ -241,40 +243,24 @@ namespace InfServer.Script.GameType_Eol
                 _sectorDamage = now;
             }
 
-            if (now - _tickEolGameStart > 216000000000 && playing > 0)
-            {
-                if (_baseScript._activeCrowns.Count == 0 && _gameBegun == true)
-                {
-                    _arena.sendArenaMessage(string.Format("Radiation Wind change warning! New Sectors in 30 Seconds"), _config.flag.victoryWarningBong);
-                    _arena.setTicker(1, 3, 15 * 100, "Radiation Wind change warning! New Sectors in 30 Seconds",
-                    delegate ()
-                    {
-                        _arena.sendArenaMessage(string.Format("Radiation Wind change warning! New Sectors in 15 Seconds"), _config.flag.victoryWarningBong);
-                        _arena.setTicker(1, 3, 15 * 100, "Radiation Wind change warning! New Sectors in 15 Seconds",
-                        delegate ()
-                        {   //Trigger the game start
-
-                        newSectors();
-                        });
-                    });
-                }
-            }
+            
 
             return true;
         }
 
         public void newSectors()
         {
-
-
-            //Game reset, perhaps start a new one
-            _tickEolGameStart = 0;
-            _bBoundariesDrawn = false;
-            if (_activeSectors.Count() != 0) { _activeSectors.Clear(); }
-            _gameBegun = false;
-            Sectors(emptyp, emptyp, emptyp, emptyp);
-            sectUnder30 = "";
-            sectUnder60 = "";
+            Helpers.ObjectState warpPoint;
+            foreach (Player player in _arena.PlayersIngame)
+            {
+                warpPoint = _baseScript.findOpenWarp(player, _arena, 27008, 2864, 300);
+                if (warpPoint == null)
+                {
+                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                    player.sendMessage(-1, "Warp was blocked, please try again");
+                }
+                _baseScript.warp(player, warpPoint);
+            }
         }
         #region Sector workings
         public void whichSector()
@@ -692,779 +678,789 @@ namespace InfServer.Script.GameType_Eol
         public bool playerPortal(Player player, LioInfo.Portal portal)
         {
             Helpers.ObjectState warpPoint;
-
-            if (portal.GeneralData.Name.Contains("MapPortal"))
+            if (_gameBegun)
             {
-                if (bOneSector == true)
+                if (portal.GeneralData.Name.Contains("MapPortal"))
                 {
-                    if (sectUnder30 == sectorA)
+                    if (bOneSector == true)
                     {
-                        var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
+                        if (sectUnder30 == sectorA)
                         {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecA1.x, SecA1.y, SecA1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecA2.x, SecA2.y, SecA2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecA3.x, SecA3.y, SecA3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
+                            var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecA1.x, SecA1.y, SecA1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecA2.x, SecA2.y, SecA2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecA3.x, SecA3.y, SecA3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
 
-                            
-                    }
-                    if (sectUnder30 == sectorB)
-                    {
-                        var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
+
+                        }
+                        if (sectUnder30 == sectorB)
                         {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecB1.x, SecB1.y, SecB1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecB2.x, SecB2.y, SecB2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecB3.x, SecB3.y, SecB3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
+                            var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecB1.x, SecB1.y, SecB1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecB2.x, SecB2.y, SecB2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecB3.x, SecB3.y, SecB3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorC)
+                        {
+                            var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecC1.x, SecC1.y, SecC1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecC2.x, SecC2.y, SecC2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecC3.x, SecC3.y, SecC3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorD)
+                        {
+                            var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecD1.x, SecD1.y, SecD1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecD2.x, SecD2.y, SecD2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecD3.x, SecD3.y, SecD3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
                         }
                     }
-                    if (sectUnder30 == sectorC)
+                    else if (bTwoSector == true)
                     {
-                        var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
+                        if (sectUnder30 == sectorA && sectUnder60 == sectorB)
                         {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecC1.x, SecC1.y, SecC1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecC2.x, SecC2.y, SecC2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecC3.x, SecC3.y, SecC3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB1.x, SecAB1.y, SecAB1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB2.x, SecAB2.y, SecAB2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB3.x, SecAB3.y, SecAB3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB4.x, SecAB4.y, SecAB4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB5.x, SecAB5.y, SecAB5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB6.x, SecAB6.y, SecAB6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorA && sectUnder60 == sectorC)
+                        {
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC1.x, SecAC1.y, SecAC1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC2.x, SecAC2.y, SecAC2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC3.x, SecAC3.y, SecAC3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC4.x, SecAC4.y, SecAC4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC5.x, SecAC5.y, SecAC5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC6.x, SecAC6.y, SecAC6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorC && sectUnder60 == sectorD)
+                        {
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD1.x, SecCD1.y, SecCD1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD2.x, SecCD2.y, SecCD2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD3.x, SecCD3.y, SecCD3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD4.x, SecCD4.y, SecCD4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD5.x, SecCD5.y, SecCD5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD6.x, SecCD6.y, SecCD6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorB && sectUnder60 == sectorD)
+                        {
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD1.x, SecBD1.y, SecBD1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD2.x, SecBD2.y, SecBD2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD3.x, SecBD3.y, SecBD3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD4.x, SecBD4.y, SecBD4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD5.x, SecBD5.y, SecBD5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD6.x, SecBD6.y, SecBD6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorB && sectUnder60 == sectorA)
+                        {
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB1.x, SecAB1.y, SecAB1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB2.x, SecAB2.y, SecAB2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB3.x, SecAB3.y, SecAB3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB4.x, SecAB4.y, SecAB4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB5.x, SecAB5.y, SecAB5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB6.x, SecAB6.y, SecAB6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorC && sectUnder60 == sectorA)
+                        {
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC1.x, SecAC1.y, SecAC1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC2.x, SecAC2.y, SecAC2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC3.x, SecAC3.y, SecAC3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC4.x, SecAC4.y, SecAC4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC5.x, SecAC5.y, SecAC5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC6.x, SecAC6.y, SecAC6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorD && sectUnder60 == sectorC)
+                        {
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD1.x, SecCD1.y, SecCD1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD2.x, SecCD2.y, SecCD2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD3.x, SecCD3.y, SecCD3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD4.x, SecCD4.y, SecCD4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD5.x, SecCD5.y, SecCD5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD6.x, SecCD6.y, SecCD6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
+                        }
+                        if (sectUnder30 == sectorD && sectUnder60 == sectorB)
+                        {
+                            var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD1.x, SecBD1.y, SecBD1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD2.x, SecBD2.y, SecBD2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD3.x, SecBD3.y, SecBD3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD4.x, SecBD4.y, SecBD4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD5.x, SecBD5.y, SecBD5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 6:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD6.x, SecBD6.y, SecBD6.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
                         }
                     }
-                    if (sectUnder30 == sectorD)
+                    else if (bAllSectors == true)
                     {
-                        var listNums = Enumerable.Range(1, 3).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
+                        if (sectUnder30 == allSector)
                         {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecD1.x, SecD1.y, SecD1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecD2.x, SecD2.y, SecD2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecD3.x, SecD3.y, SecD3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
+                            var listNums = Enumerable.Range(1, 5).OrderBy(i => _rand.Next()).ToList();
+                            int selectedNum = listNums[0];
+                            switch (selectedNum)
+                            {
+                                case 1:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll1.x, SecAll1.y, SecAll1.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 2:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll2.x, SecAll2.y, SecAll2.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 3:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll3.x, SecAll3.y, SecAll3.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 4:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll4.x, SecAll4.y, SecAll4.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                                case 5:
+                                    warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll5.x, SecAll5.y, SecAll5.radius);
+                                    if (warpPoint == null)
+                                    {
+                                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                                        player.sendMessage(-1, "Warp was blocked, please try again");
+                                        return false;
+                                    }
+                                    _baseScript.warp(player, warpPoint);
+                                    break;
+                            }
                         }
+                    }
+                    else
+                    {
+                        Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
+                        player.sendMessage(-1, "Warp was blocked, please try again");
+                        return false;
                     }
                 }
-                else if (bTwoSector == true)
+                
+            }
+            else
+            {
+                if (portal.GeneralData.Name.Contains("MapPortal"))
                 {
-                    if (sectUnder30 == sectorA && sectUnder60 == sectorB)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB1.x, SecAB1.y, SecAB1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB2.x, SecAB2.y, SecAB2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB3.x, SecAB3.y, SecAB3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB4.x, SecAB4.y, SecAB4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB5.x, SecAB5.y, SecAB5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB6.x, SecAB6.y, SecAB6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                    if (sectUnder30 == sectorA && sectUnder60 == sectorC)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC1.x, SecAC1.y, SecAC1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC2.x, SecAC2.y, SecAC2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC3.x, SecAC3.y, SecAC3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC4.x, SecAC4.y, SecAC4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC5.x, SecAC5.y, SecAC5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC6.x, SecAC6.y, SecAC6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                    if (sectUnder30 == sectorC && sectUnder60 == sectorD)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD1.x, SecCD1.y, SecCD1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD2.x, SecCD2.y, SecCD2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD3.x, SecCD3.y, SecCD3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD4.x, SecCD4.y, SecCD4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD5.x, SecCD5.y, SecCD5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD6.x, SecCD6.y, SecCD6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                    if (sectUnder30 == sectorB && sectUnder60 == sectorD)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD1.x, SecBD1.y, SecBD1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD2.x, SecBD2.y, SecBD2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD3.x, SecBD3.y, SecBD3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD4.x, SecBD4.y, SecBD4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD5.x, SecBD5.y, SecBD5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD6.x, SecBD6.y, SecBD6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                    if (sectUnder30 == sectorB && sectUnder60 == sectorA)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB1.x, SecAB1.y, SecAB1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB2.x, SecAB2.y, SecAB2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB3.x, SecAB3.y, SecAB3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB4.x, SecAB4.y, SecAB4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB5.x, SecAB5.y, SecAB5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAB6.x, SecAB6.y, SecAB6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                    if (sectUnder30 == sectorC && sectUnder60 == sectorA)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC1.x, SecAC1.y, SecAC1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC2.x, SecAC2.y, SecAC2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC3.x, SecAC3.y, SecAC3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC4.x, SecAC4.y, SecAC4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC5.x, SecAC5.y, SecAC5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAC6.x, SecAC6.y, SecAC6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                    if (sectUnder30 == sectorD && sectUnder60 == sectorC)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD1.x, SecCD1.y, SecCD1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD2.x, SecCD2.y, SecCD2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD3.x, SecCD3.y, SecCD3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD4.x, SecCD4.y, SecCD4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD5.x, SecCD5.y, SecCD5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecCD6.x, SecCD6.y, SecCD6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                    if (sectUnder30 == sectorD && sectUnder60 == sectorB)
-                    {
-                        var listNums = Enumerable.Range(1, 6).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD1.x, SecBD1.y, SecBD1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD2.x, SecBD2.y, SecBD2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD3.x, SecBD3.y, SecBD3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD4.x, SecBD4.y, SecBD4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD5.x, SecBD5.y, SecBD5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 6:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecBD6.x, SecBD6.y, SecBD6.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                }
-                else if (bAllSectors == true)
-                {
-                    if (sectUnder30 == allSector)
-                    {
-                        var listNums = Enumerable.Range(1, 5).OrderBy(i => _rand.Next()).ToList();
-                        int selectedNum = listNums[0];
-                        switch (selectedNum)
-                        {
-                            case 1:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll1.x, SecAll1.y, SecAll1.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 2:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll2.x, SecAll2.y, SecAll2.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 3:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll3.x, SecAll3.y, SecAll3.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 4:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll4.x, SecAll4.y, SecAll4.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                            case 5:
-                                warpPoint = _baseScript.findOpenWarp(player, _arena, SecAll5.x, SecAll5.y, SecAll5.radius);
-                                if (warpPoint == null)
-                                {
-                                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                                    player.sendMessage(-1, "Warp was blocked, please try again");
-                                    return false;
-                                }
-                                _baseScript.warp(player, warpPoint);
-                                break;
-                        }
-                    }
-                }
-                else
-                {
-                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                    player.sendMessage(-1, "Warp was blocked, please try again");
-                    return false;
+                    player.sendMessage(-1, "Warp was blocked, it will reopen when sectors open.");
                 }
             }
             return false;

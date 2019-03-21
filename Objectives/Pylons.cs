@@ -146,13 +146,13 @@ namespace InfServer.Script.GameType_Eol
         public bool Poll(int now)
         {
             int playing = _arena.PlayerCount;
-            if (playing > 0)
+            if (playing >= 1)
             {
                 gameStart();
             }
             if (_gameBegun == true)
             {
-                if (!_bpylonsSpawned)
+                if (_bpylonsSpawned == false && playing >= 1)
                 {
                     addPylons();
                     _bpylonsSpawned = true;

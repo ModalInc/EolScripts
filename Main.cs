@@ -163,6 +163,7 @@ namespace InfServer.Script.GameType_Eol
             _minPlayers = Int32.MaxValue;
             //Load up our gametype handlers
             _eol = new EolBoundaries(_arena, this);
+            //Load up Pylons
             _pylonsScr = new Pylons(_arena, this);
 
             foreach (Arena.FlagState fs in _arena._flags.Values)
@@ -225,28 +226,29 @@ namespace InfServer.Script.GameType_Eol
         public bool poll()
         {	//Should we check game state yet?
             int now = Environment.TickCount;
+            int playing = _arena.PlayerCount;
             if (_arena._bGameRunning)
             {
                 _eol.Poll(now);
-                _pylonsScr.Poll(now);
+                if (playing >= 1) { _pylonsScr.Poll(now); }
+                
             }
             UpdateCTFTickers();
             UpdateKillStreaks();
             //Do we have enough people to start a game of KOTH?
-            int playing = _arena.PlayerCount;
             if (now - _lastGameCheck <= Arena.gameCheckInterval)
                 return true;
             _lastGameCheck = now;
 
             if ((_tickGameStart == 0 || _tickGameStarting == 0) && playing < _minPlayers)
             {   //Stop the game!
-                _arena.setTicker(1, 1, 0, "Not Enough Players for KOTH");
+                _arena.setTicker(1, 1, 0, "Not Enough Players, Join to start game");
             }
             //Do we have enough players to start a CTF game?
-            else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= _minPlayers)
+            else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
             {	//Great! Get going
                 _tickGameStarting = now;
-                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next CTF game: ",
+                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next game in 15 seconds: ",
                     delegate ()
                     {	//Trigger the game start
                         _arena.gameStart();
@@ -276,9 +278,27 @@ namespace InfServer.Script.GameType_Eol
                     _lastFlagCheck = now;
                 }
             }
-            
-            
-            
+            if (_arena._bGameRunning && playing == 0) { _arena.gameEnd(); }
+
+            if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
+            {
+                if (_activeCrowns.Count == 0 && _eol._gameBegun == true)
+                {
+                    _arena.sendArenaMessage(string.Format("Radiation Wind change warning! New Sectors in 30 Seconds"), _config.flag.victoryWarningBong);
+                    _arena.setTicker(1, 3, 15 * 100, "Radiation Wind change warning! New Sectors in 30 Seconds",
+                    delegate ()
+                    {
+                        _arena.sendArenaMessage(string.Format("Radiation Wind change warning! New Sectors in 15 Seconds"), _config.flag.victoryWarningBong);
+                        _arena.setTicker(1, 3, 15 * 100, "Radiation Wind change warning! New Sectors in 15 Seconds",
+                        delegate ()
+                        {   //Trigger the game start
+
+                            _eol.newSectors();
+                        });
+                    });
+                }
+            }
+
 
             //Should we reward yet for HQs?
             if (now - _lastHQReward > _rewardInterval)
@@ -1045,13 +1065,7 @@ namespace InfServer.Script.GameType_Eol
         /// </summary>
         [Scripts.Event("Player.EnterArena")]
         public void playerEnter(Player player)
-        {   //We always run blank games, try to start a game in whatever arena the player is in
-            if (!_arena._bGameRunning)
-            {
-                _arena.gameStart();
-                _arena.flagSpawn();
-            }
-
+        { 
             //Send them the crowns if KOTH is enabled
             if (_minPlayers > 0)
                 if (!_playerCrownStatus.ContainsKey(player))
@@ -1313,9 +1327,6 @@ namespace InfServer.Script.GameType_Eol
         {   //We've started!
             _tickGameStart = Environment.TickCount;
             _tickGameStarting = 0;
-
-            //Spawn our flags!
-            _arena.flagSpawn();
             _eol.gameStart();
             _pylonsScr.gameStart();
             ResetKiller(null);
@@ -1331,7 +1342,7 @@ namespace InfServer.Script.GameType_Eol
                 killStreaks.Add(p._alias, temp);
             }
             //Let everyone know
-            _arena.sendArenaMessage("CTF game has started!", _config.flag.resetBong);
+            _arena.sendArenaMessage("A new game has started!", _config.flag.resetBong);
             //Start keeping track of healing
             _healingDone = new Dictionary<Player, int>();
             updateTickers();
