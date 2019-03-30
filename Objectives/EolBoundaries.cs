@@ -29,6 +29,7 @@ namespace InfServer.Script.GameType_Eol
         public int _tickEolGameStart;				//The tick at which the game started (0 == stopped)
         private int _tickSectorScramble;        // The tick at which we check for scrambling of area
         private int _sectorDamage;
+        private int _drawnSector;
         public bool _bBoundariesDrawn;
         public bool _gameBegun;
         public bool bOneSector;
@@ -36,6 +37,10 @@ namespace InfServer.Script.GameType_Eol
         public bool bAllSectors;
         public bool bbetweengames;
 
+        public short _top;
+        public short _bottom;
+        public short _left;
+        public short _right;
 
         private List<Team> _activeTeams;
         public List<string> _activeSectors;
@@ -192,6 +197,7 @@ namespace InfServer.Script.GameType_Eol
             _sectorDamage = Environment.TickCount;
             _tickSectorStart = Environment.TickCount;
             _tickSectorScramble = Environment.TickCount;
+            _drawnSector = Environment.TickCount;
             _gameBegun = false;
             bOneSector = false;
             bTwoSector = false;
@@ -215,12 +221,15 @@ namespace InfServer.Script.GameType_Eol
                 {
                     whichSector();
                     drawCurrentSector();
-                    drawCurrentRectangleSector();
-                    _bBoundariesDrawn = true;
+                    _bBoundariesDrawn = true; 
                 }
                 
             }
 
+            if ((now - _drawnSector >= 20000) && _bBoundariesDrawn == true)
+            {
+                drawCurrentSector();
+            }
 
             if ((now - _sectorDamage >= 1000) && (now - _tickSectorStart >= 5000))
             {
@@ -297,8 +306,7 @@ namespace InfServer.Script.GameType_Eol
                     _tRight = aTR;
                     _bRight = aBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
-                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open");
-                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open");
+                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -310,8 +318,7 @@ namespace InfServer.Script.GameType_Eol
                     _tRight = bTR;
                     _bRight = bBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
-                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open");
-                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open");
+                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -323,8 +330,7 @@ namespace InfServer.Script.GameType_Eol
                     _tRight = cTR;
                     _bRight = cBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
-                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open");
-                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open");
+                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -336,8 +342,7 @@ namespace InfServer.Script.GameType_Eol
                     _tRight = dTR;
                     _bRight = dBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
-                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open");
-                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open");
+                    _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -357,8 +362,7 @@ namespace InfServer.Script.GameType_Eol
                     {
                         sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
+                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
                         bOneSector = false;
                         bTwoSector = true;
                         bAllSectors = false;
@@ -399,8 +403,7 @@ namespace InfServer.Script.GameType_Eol
                     {
                         sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
+                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
                         bOneSector = false;
                         bTwoSector = true;
                         bAllSectors = false;
@@ -444,8 +447,7 @@ namespace InfServer.Script.GameType_Eol
                     {
                         sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
+                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
                         bOneSector = false;
                         bTwoSector = true;
                         bAllSectors = false;
@@ -486,8 +488,7 @@ namespace InfServer.Script.GameType_Eol
                     {
                         sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
-                        _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open");
+                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
                         bOneSector = false;
                         bTwoSector = true;
                         bAllSectors = false;
@@ -530,8 +531,7 @@ namespace InfServer.Script.GameType_Eol
             {
                 Sectors(fTL, fBL, fTR, fBR);
                 _activeSectors.Add(allSector);
-                _arena.sendArenaMessage("All Sectors are currently open with low radiation levels");
-                _arena.setTicker(1, 3, 0, "All Sectors are currently open with low radiation levels");
+                _arena.sendArenaMessage("All Sectors are currently open with low radiation levels", _config.flag.victoryWarningBong);
                 bOneSector = false;
                 bTwoSector = false;
                 bAllSectors = true;
@@ -549,78 +549,79 @@ namespace InfServer.Script.GameType_Eol
             _bottomRightx = bottomRight.x;
             _bottomRighty = bottomRight.y;
 
+            _top = topLeft.y;
+            _bottom = bottomLeft.y;
+            _left = topLeft.x;
+            _right = topRight.x;
+
             _bBoundariesDrawn = false;
         }
 
         public void drawCurrentSector()
         {
+            drawCurrentRecSectorSides();
+            drawCurrentRecSector();
+        }
+
+        public void drawCurrentRecSectorSides()
+        {
             Helpers.ObjectState state = new Helpers.ObjectState();
             Helpers.ObjectState target = new Helpers.ObjectState();
+            short _middle = (short)(_top + (_bottom - _top) / 2);
+            short _middleTop = (short)(_top + (_middle - _top) / 2);
+            short _middleBottom = (short)(_middle + (_bottom - _middle) / 2);
 
-            state.positionX = _bottomRightx;
-            state.positionY = _bottomRighty;
-            target.positionX = _topRightx;
-            target.positionY = _topRighty;
+            state.positionX = _right;
+            state.positionY = _bottom;
+            target.positionX = _right;
+            target.positionY = _top;
 
             byte fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000);
             fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000); // Right, Bottom to Top
-            Helpers.Player_RouteExplosion(_arena.Players, 1452, _topRightx, _bottomRightx, 0, fireAngle, 0);
-            Helpers.Player_RouteExplosion(_arena.Players, 1469, _topRighty, _bottomRighty, 0, fireAngle, 0);// vis
+            Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _bottom, 0, fireAngle, 0);
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middle, 0, fireAngle, 0); //Middle
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middleTop, 0, fireAngle, 0); //MiddleTop
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middleBottom, 0, fireAngle, 0); //MiddleBottom
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _bottom, 0, fireAngle, 0);//vis
 
-
-            state.positionX = _topRightx;
-            state.positionY = _topRighty;
-            target.positionX = _bottomRightx;
-            target.positionY = _bottomRighty;
-
-            fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000);  //Right, Top to Bottom
-            Helpers.Player_RouteExplosion(_arena.Players, 1452, _bottomRightx, _topRightx, 0, fireAngle, 0);
-            Helpers.Player_RouteExplosion(_arena.Players, 1469, _bottomRighty, _topRighty, 0, fireAngle, 0);
-
-            state.positionX = _topLeftx;
-            state.positionY = _topLefty;
-            target.positionX = _bottomLeftx;
-            target.positionY = _bottomLefty;
+            state.positionX = _left;
+            state.positionY = _top;
+            target.positionX = _left;
+            target.positionY = _bottom;
 
             fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000); //Left, Top to Bottom
-            Helpers.Player_RouteExplosion(_arena.Players, 1452, _topLeftx, _bottomLeftx, 0, fireAngle, 0);
-            Helpers.Player_RouteExplosion(_arena.Players, 1469, _topLefty, _bottomLefty, 0, fireAngle, 0); // vis
+            Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _top, 0, fireAngle, 0);
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middle, 0, fireAngle, 0); // Middle
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middleTop, 0, fireAngle, 0); // MiddleTop
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middleBottom, 0, fireAngle, 0); // MiddleBottom
+            //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _top, 0, fireAngle, 0); // vis
 
-
-            state.positionX = _bottomLeftx;
-            state.positionY = _bottomLefty;
-            target.positionX = _topLeftx;
-            target.positionY = _topLefty;
-
-            fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000);  //Left, Bottom to Top
-            Helpers.Player_RouteExplosion(_arena.Players, 1452, _bottomLeftx, _topLeftx, 0, fireAngle, 0);
-            Helpers.Player_RouteExplosion(_arena.Players, 1469, _bottomLefty, _topLefty, 0, fireAngle, 0); // vis
         }
 
-        public void drawCurrentRectangleSector()
+        public void drawCurrentRecSector()
         {
-            short circleMarkLocation = _topLeftx;
+            short circleMarkLocation = _left;
             short distanceBetweenCircleMarks = 100;
 
             Helpers.ObjectState state = new Helpers.ObjectState();
             Helpers.ObjectState target = new Helpers.ObjectState();
-            state.positionX = _topRightx;
-            state.positionY = _topRighty;
-            target.positionX = _bottomRightx;
-            target.positionY = _bottomRighty;
+            state.positionX = _right;
+            state.positionY = _top;
+            target.positionX = _right;
+            target.positionY = _bottom;
             byte fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000);
 
-            while (circleMarkLocation < _topRightx)
+            while (circleMarkLocation < _right)
             {
-                Helpers.Player_RouteExplosion(_arena.Players, 1470, _topLeftx, _topRightx, 0, fireAngle, 0);
-                Helpers.Player_RouteExplosion(_arena.Players, 1470, _bottomLeftx, _bottomRightx, 0, fireAngle, 0);
+                Helpers.Player_RouteExplosion(_arena.Players, 2552, circleMarkLocation, _top, 0, fireAngle, 0);
+                Helpers.Player_RouteExplosion(_arena.Players, 2552, circleMarkLocation, _bottom, 0, fireAngle, 0);
                 circleMarkLocation += distanceBetweenCircleMarks;
             }
-            circleMarkLocation = _bottomLeftx;
-            while (circleMarkLocation < _bottomRightx)
+            circleMarkLocation = _top;
+            while (circleMarkLocation < _bottom)
             {
-                Helpers.Player_RouteExplosion(_arena.Players, 1470, _bottomRightx, _bottomLeftx, 0, fireAngle, 0);
-                Helpers.Player_RouteExplosion(_arena.Players, 1470, _bottomRightx, _bottomLeftx, 0, fireAngle, 0);
+                Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, circleMarkLocation, 0, fireAngle, 0);
+                Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, circleMarkLocation, 0, fireAngle, 0);
                 circleMarkLocation += distanceBetweenCircleMarks;
             }
 
@@ -638,7 +639,6 @@ namespace InfServer.Script.GameType_Eol
         public bool gamesEnd()
         {
             _tickEolGameStart = 0;
-            if(_activeSectors.Count() != 0) { _activeSectors.Clear(); }
             _bBoundariesDrawn = false;
             _gameBegun = false;
             Sectors(emptyp, emptyp, emptyp, emptyp);
@@ -651,7 +651,6 @@ namespace InfServer.Script.GameType_Eol
         {	//Game reset, perhaps start a new one
             _tickEolGameStart = 0;
             _bBoundariesDrawn = false;
-            if (_activeSectors.Count() != 0) { _activeSectors.Clear(); }
             _gameBegun = false;
             Sectors(emptyp, emptyp, emptyp, emptyp);
             sectUnder30 = "";

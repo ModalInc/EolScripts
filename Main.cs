@@ -231,10 +231,10 @@ namespace InfServer.Script.GameType_Eol
             {
                 _eol.Poll(now);
                 if (playing >= 1) { _pylonsScr.Poll(now); }
-                
+                UpdateCTFTickers();
+                UpdateKillStreaks();
             }
-            UpdateCTFTickers();
-            UpdateKillStreaks();
+            
             //Do we have enough people to start a game of KOTH?
             if (now - _lastGameCheck <= Arena.gameCheckInterval)
                 return true;
@@ -248,7 +248,7 @@ namespace InfServer.Script.GameType_Eol
             else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
             {	//Great! Get going
                 _tickGameStarting = now;
-                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next game in 15 seconds: ",
+                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next game starts in: ",
                     delegate ()
                     {	//Trigger the game start
                         _arena.gameStart();
@@ -280,19 +280,21 @@ namespace InfServer.Script.GameType_Eol
             }
             if (_arena._bGameRunning && playing == 0) { _arena.gameEnd(); }
 
-            if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
+            //if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
+            if (now - _eol._tickEolGameStart > 6000 && playing > 0)
             {
                 if (_activeCrowns.Count == 0 && _eol._gameBegun == true)
                 {
-                    _arena.sendArenaMessage(string.Format("Radiation Wind change warning! New Sectors in 30 Seconds"), _config.flag.victoryWarningBong);
-                    _arena.setTicker(1, 3, 15 * 100, "Radiation Wind change warning! New Sectors in 30 Seconds",
+                    _arena.sendArenaMessage(string.Format("Radiation Wind Change Warning! New Sectors in 30 Seconds"), _config.flag.victoryWarningBong);
+                    _arena.sendArenaMessage(string.Format("You will be sent to Pioneer Station during sector change"));
+                    _arena.setTicker(1, 3, 15 * 100, "Radiation Wind Change Warning! New Sectors in 30 Seconds",
                     delegate ()
                     {
-                        _arena.sendArenaMessage(string.Format("Radiation Wind change warning! New Sectors in 15 Seconds"), _config.flag.victoryWarningBong);
-                        _arena.setTicker(1, 3, 15 * 100, "Radiation Wind change warning! New Sectors in 15 Seconds",
+                        _arena.sendArenaMessage(string.Format("Radiation Wind Change Warning! New Sectors in 15 Seconds"), _config.flag.victoryWarningBong);
+                        _arena.sendArenaMessage(string.Format("You will be sent to Pioneer Station during sector change"));
+                        _arena.setTicker(1, 3, 15 * 100, "Radiation Wind Change Warning! New Sectors in 15 Seconds",
                         delegate ()
                         {   //Trigger the game start
-
                             _eol.newSectors();
                         });
                     });
@@ -840,6 +842,7 @@ namespace InfServer.Script.GameType_Eol
         #region Killstreak Updaters
         private void UpdateCTFTickers()
         {
+            int playing = _arena.PlayerCount;
             List<Player> rankedPlayers = _arena.Players.ToList().OrderBy(player => (player.StatsCurrentGame == null ? 0 : player.StatsCurrentGame.deaths)).OrderByDescending(
                 player => (player.StatsCurrentGame == null ? 0 : player.StatsCurrentGame.kills)).ToList();
             int idx = 3;
@@ -856,10 +859,10 @@ namespace InfServer.Script.GameType_Eol
                 switch (idx)
                 {
                     case 2:
-                        format = string.Format("!1st: {0}(K={1} D={2}) ", p._alias, p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths);
+                        format = string.Format("1st: {0}(K={1} D={2}) ", p._alias, p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths);
                         break;
                     case 1:
-                        format = (format + string.Format("!2nd: {0}(K={1} D={2})", p._alias, p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths));
+                        format = (format + string.Format("2nd: {0}(K={1} D={2})", p._alias, p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths));
                         break;
                 }
             }
@@ -874,6 +877,10 @@ namespace InfServer.Script.GameType_Eol
                 }
                 return string.Format("Personal Score: Kills={0} - Deaths={1}", p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths);
             });
+
+            if (playing < 30) _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open");
+            if (playing >= 30 && playing < 60) _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + "and " + _eol.sectUnder60 + " are open");
+            if (playing > 60) _arena.setTicker(1, 3, 0, "All Sectors are currently open with low radiation levels");
         }
 
         /// <summary>
