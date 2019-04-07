@@ -226,9 +226,10 @@ namespace InfServer.Script.GameType_Eol
                 
             }
 
-            if ((now - _drawnSector >= 20000) && _bBoundariesDrawn == true)
+            if ((now - _drawnSector >= 64000) && _bBoundariesDrawn == true)
             {
                 drawCurrentSector();
+                _drawnSector = now;
             }
 
             if ((now - _sectorDamage >= 1000) && (now - _tickSectorStart >= 5000))
@@ -251,26 +252,13 @@ namespace InfServer.Script.GameType_Eol
                 }
                 _sectorDamage = now;
             }
-
             
+
 
             return true;
         }
 
-        public void newSectors()
-        {
-            Helpers.ObjectState warpPoint;
-            foreach (Player player in _arena.PlayersIngame)
-            {
-                warpPoint = _baseScript.findOpenWarp(player, _arena, 27008, 2864, 300);
-                if (warpPoint == null)
-                {
-                    Log.write(TLog.Normal, String.Format("Could not find open warp for {0} (Warp Blocked)", player._alias));
-                    player.sendMessage(-1, "Warp was blocked, please try again");
-                }
-                _baseScript.warp(player, warpPoint);
-            }
-        }
+        
         #region Sector workings
         public void whichSector()
         {
@@ -540,19 +528,20 @@ namespace InfServer.Script.GameType_Eol
 
         public void Sectors(Point topLeft, Point bottomLeft, Point topRight, Point bottomRight)
         {
-            _topLeftx = topLeft.x;
-            _topLefty = topLeft.y;
-            _bottomLeftx = bottomLeft.x;
-            _bottomLefty = bottomLeft.y;
-            _topRightx = topRight.x;
-            _topRighty = topRight.y;
-            _bottomRightx = bottomRight.x;
-            _bottomRighty = bottomRight.y;
 
             _top = topLeft.y;
             _bottom = bottomLeft.y;
             _left = topLeft.x;
             _right = topRight.x;
+
+            _topLeftx = topLeft.x;
+            _topLefty = topLeft.y;
+            _topRightx = topRight.x;
+            _topRighty = topRight.y;
+            _bottomLeftx = bottomLeft.x;
+            _bottomLefty = bottomLeft.y;
+            _bottomRightx = bottomRight.x;
+            _bottomRighty = bottomRight.y;
 
             _bBoundariesDrawn = false;
         }
@@ -576,8 +565,8 @@ namespace InfServer.Script.GameType_Eol
             target.positionX = _right;
             target.positionY = _top;
 
-            byte fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000);
-            fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000); // Right, Bottom to Top
+            byte fireAngle = Helpers.computeLeadFireAngle(state, target, 2000 / 100);
+            fireAngle = Helpers.computeLeadFireAngle(state, target, 2000 / 100); // Right, Bottom to Top
             Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _bottom, 0, fireAngle, 0);
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middle, 0, fireAngle, 0); //Middle
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middleTop, 0, fireAngle, 0); //MiddleTop
@@ -589,7 +578,7 @@ namespace InfServer.Script.GameType_Eol
             target.positionX = _left;
             target.positionY = _bottom;
 
-            fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000); //Left, Top to Bottom
+            fireAngle = Helpers.computeLeadFireAngle(state, target, 2000 / 100); //Left, Top to Bottom
             Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _top, 0, fireAngle, 0);
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middle, 0, fireAngle, 0); // Middle
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middleTop, 0, fireAngle, 0); // MiddleTop
@@ -601,7 +590,7 @@ namespace InfServer.Script.GameType_Eol
         public void drawCurrentRecSector()
         {
             short circleMarkLocation = _left;
-            short distanceBetweenCircleMarks = 100;
+            short distanceBetweenCircleMarks = 200;
 
             Helpers.ObjectState state = new Helpers.ObjectState();
             Helpers.ObjectState target = new Helpers.ObjectState();
@@ -609,7 +598,7 @@ namespace InfServer.Script.GameType_Eol
             state.positionY = _top;
             target.positionX = _right;
             target.positionY = _bottom;
-            byte fireAngle = Helpers.computeLeadFireAngle(state, target, 20000 / 1000);
+            byte fireAngle = Helpers.computeLeadFireAngle(state, target, 2000 / 100);
 
             while (circleMarkLocation < _right)
             {
@@ -634,6 +623,7 @@ namespace InfServer.Script.GameType_Eol
             int now = Environment.TickCount;
             _tickEolGameStart = Environment.TickCount;
             _gameBegun = true;
+            bbetweengames = false;
         }
 
         public bool gamesEnd()
@@ -644,6 +634,7 @@ namespace InfServer.Script.GameType_Eol
             Sectors(emptyp, emptyp, emptyp, emptyp);
             sectUnder30 = "";
             sectUnder60 = "";
+            bbetweengames = true;
             return true;
         }
 
@@ -655,6 +646,7 @@ namespace InfServer.Script.GameType_Eol
             Sectors(emptyp, emptyp, emptyp, emptyp);
             sectUnder30 = "";
             sectUnder60 = "";
+            bbetweengames = true;
             return true;
         }
 
@@ -677,7 +669,7 @@ namespace InfServer.Script.GameType_Eol
         public bool playerPortal(Player player, LioInfo.Portal portal)
         {
             Helpers.ObjectState warpPoint;
-            if (_gameBegun)
+            if (_gameBegun && bbetweengames == false)
             {
                 if (portal.GeneralData.Name.Contains("MapPortal"))
                 {
@@ -1455,7 +1447,7 @@ namespace InfServer.Script.GameType_Eol
                 }
                 
             }
-            else
+            else if (bbetweengames == true)
             {
                 if (portal.GeneralData.Name.Contains("MapPortal"))
                 {

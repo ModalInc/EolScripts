@@ -72,6 +72,7 @@ namespace InfServer.Script.GameType_Eol
 
 
             _baseScript = BaseScript;
+
             owner = _owner;
         }
         /// <summary>
