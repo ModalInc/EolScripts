@@ -35,14 +35,15 @@ namespace InfServer.Script.GameType_Eol
 
         public EolBoundaries _eol;
 
-        private int _lastGameCheck;				//The tick at which we last checked for game viability
+        private int _lastGameCheck;		//The tick at which we last checked for game viability
         private int _lastHQReward;              //The tick at which we last checked for HQ rewards
 
         //KOTH
-        private Team _victoryKothTeam;			//The team currently winning!
+        private Team _victoryKothTeam;		//The team currently winning!
         private int _tickGameLastTickerUpdate;  //The tick at which the ticker was last updated
-        private int _tickGameStarting;			//The tick at which the game began starting (0 == not initiated)
-        private int _tickGameStart;				//The tick at which the game started (0 == stopped)
+        private int _tickGameStarting;		//The tick at which the game began starting (0 == not initiated)
+        private int _tickGameStart;		//The tick at which the game started (0 == stopped)
+	private int _tickeolGameStart;		//The tick at which the eol game started
         private int _minPlayers;                //The minimum amount of players needed for a KOTH game
 
         //CTF
@@ -368,7 +369,7 @@ namespace InfServer.Script.GameType_Eol
                 _pointPeriodicChange = 1;
 
                 //Let's update some points!
-                int flagdelay = 1000; //1000 = 1 second
+                int flagdelay = 2000; //1000 = 1 second
                 if (now - _lastFlagCheck >= flagdelay)
                 {   //It's time for a flag update
 
@@ -393,10 +394,10 @@ namespace InfServer.Script.GameType_Eol
                 }
                 _lastPylonCheck = now;
             }
-            //if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
-            if (now - _eol._tickEolGameStart > 100000 && playing > 0)
+            //if (now - _tickEolGameStart > 216000000000 && playing > 0)
+            if (now - _tickeolGameStart > 100000 && _gameBegun == true)
             {
-                if (_activeCrowns.Count == 0 && _eol._gameBegun == true)
+                if (_activeCrowns.Count == 0)
                 {
                     _arena.sendArenaMessage("Radiation Wind Change Warning! New Sectors in 30 Seconds, You will be sent to Pioneer Station during sector change", _config.flag.victoryWarningBong);
                     _arena.setTicker(1, 3, 15 * 100, "Radiation Wind Change Warning! New Sectors in 30 Seconds",
@@ -410,7 +411,7 @@ namespace InfServer.Script.GameType_Eol
                         });
                     });
                 }
-                _eol._tickEolGameStart = now;
+                _tickeolGameStart = now;
             }
             //Should we reward yet for HQs?
             if (now - _lastHQReward > _rewardInterval)
@@ -1781,6 +1782,7 @@ namespace InfServer.Script.GameType_Eol
         {   //We've started!
             _tickGameStart = Environment.TickCount;
             _tickGameStarting = 0;
+	    _tickeolGameStart = 0;
             _eol.gameStart();
             ResetKiller(null);
             killStreaks.Clear();
@@ -1812,7 +1814,7 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStarting = 0;
             _healingDone = null;
             _eol.gamesEnd();
-            
+            _bpylonsSpawned = false;
             return true;
         }
 
