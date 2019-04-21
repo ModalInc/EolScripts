@@ -163,9 +163,9 @@ namespace InfServer.Script.GameType_Eol
         Point aTR = new Point(8736, 1); //Top Right of Sector A
         Point aBR = new Point(8736, 6320); //Bottom Right of Sector A
         Point bTL = new Point(1, 6320);
-        Point bBL = new Point(1, 22064);
+        Point bBL = new Point(1, 14368);
         Point bTR = new Point(8736, 6320);
-        Point bBR = new Point(8736, 22064);
+        Point bBR = new Point(8736, 14368);
         Point cTL = new Point(8736, 1);
         Point cBL = new Point(8736, 6320);
         Point cTR = new Point(22064, 1);
@@ -203,30 +203,25 @@ namespace InfServer.Script.GameType_Eol
             bTwoSector = false;
             bAllSectors = false;
             bbetweengames = false;
-
         }
 
 
         public bool Poll(int now)
         {
             int playing = _arena.PlayerCount;
-            if (playing >= 1)
-            {
-                gameStart();
-            }
+            gameStart();
 
             if (_gameBegun == true)
             {
                 if (!_bBoundariesDrawn)
                 {
                     whichSector();
-                    drawCurrentSector();
-                    _bBoundariesDrawn = true; 
+                    _bBoundariesDrawn = true;
                 }
                 
             }
 
-            if ((now - _drawnSector >= 64000) && _bBoundariesDrawn == true)
+            if ((now - _drawnSector >= 4100) && _bBoundariesDrawn == true)
             {
                 drawCurrentSector();
                 _drawnSector = now;
@@ -283,9 +278,8 @@ namespace InfServer.Script.GameType_Eol
             List<string> _activeSectors = new List<string>();
 
             int playing = _arena.PlayerCount;
-            if (playing < 30)
+            if (playing < 2) //30
             {
-                _baseScript._maxEngineers = 1;
                 sectUnder30 = _sectorsToUse.OrderBy(s => _rand.Next()).First();
                 _activeSectors.Add(sectUnder30);
                 if (sectUnder30 == sectorA) { 
@@ -337,10 +331,8 @@ namespace InfServer.Script.GameType_Eol
                 }
             }
 
-            if (playing >= 30 && playing < 60)
+            if (playing >= 2 && playing < 60) //30
             {
-                _baseScript._maxEngineers = 2;
-                
                 sectUnder30 = _sectorsToUse.OrderBy(s => _rand.Next()).First();
                 _activeSectors.Add(sectUnder30);
                 if (_activeSectors.Count() == 0)
@@ -350,82 +342,106 @@ namespace InfServer.Script.GameType_Eol
                     {
                         sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
-                        bOneSector = false;
-                        bTwoSector = true;
-                        bAllSectors = false;
                         if (sectUnder30 == sectorA && sectUnder60 == sectorB)
                         {
-                            Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
-                            _tRight = bTR;
-                            _bLeft = aBL;
+                            _tRight = aTR;
+                            _bLeft = bBL;
                             _bRight = bBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorA && sectUnder60 == sectorC)
                         {
-                            Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
                             _tRight = cTR;
                             _bLeft = aBL;
                             _bRight = cBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorC)
                         {
-                            Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
                             _tRight = cTR;
                             _bLeft = dBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorB)
                         {
-                            Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
                             _tRight = dTR;
                             _bLeft = bBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                     }
                     else if (sectUnder30 == sectorB || sectUnder30 == sectorC)
                     {
-                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First();
+                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
-                        bOneSector = false;
-                        bTwoSector = true;
-                        bAllSectors = false;
                         if (sectUnder30 == sectorB && sectUnder60 == sectorA)
                         {
-                            Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
-                            _tRight = bTR;
-                            _bLeft = aBL;
+                            _tRight = aTR;
+                            _bLeft = bBL;
                             _bRight = bBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorB && sectUnder60 == sectorD)
                         {
-                            Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
                             _tRight = dTR;
                             _bLeft = bBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorA)
                         {
-                            Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
                             _tRight = cTR;
                             _bLeft = aBL;
                             _bRight = cBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorD)
                         {
-                            Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
                             _tRight = cTR;
                             _bLeft = dBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                     }
                 }
@@ -433,84 +449,108 @@ namespace InfServer.Script.GameType_Eol
                 {
                     if (sectUnder30 == sectorA || sectUnder30 == sectorD)
                     {
-                        sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First();
+                        sectUnder60 = _sectorsToUseAD.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
-                        bOneSector = false;
-                        bTwoSector = true;
-                        bAllSectors = false;
                         if (sectUnder30 == sectorA && sectUnder60 == sectorB)
                         {
-                            Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
-                            _tRight = bTR;
-                            _bLeft = aBL;
+                            _tRight = aTR;
+                            _bLeft = bBL;
                             _bRight = bBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorA && sectUnder60 == sectorC)
                         {
-                            Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
                             _tRight = cTR;
                             _bLeft = aBL;
                             _bRight = cBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorC)
                         {
-                            Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
                             _tRight = cTR;
                             _bLeft = dBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorB)
                         {
-                            Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
                             _tRight = dTR;
                             _bLeft = bBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                     }
                     else if (sectUnder30 == sectorB || sectUnder30 == sectorC)
                     {
                         sectUnder60 = _sectorsToUseBC.OrderBy(s => _rand.Next()).First();
                         _activeSectors.Add(sectUnder60);
-                        _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + "and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
-                        bOneSector = false;
-                        bTwoSector = true;
-                        bAllSectors = false;
                         if (sectUnder30 == sectorB && sectUnder60 == sectorA)
                         {
-                            Sectors(aTL, bBL, aTR, bBR);
                             _tLeft = aTL;
-                            _tRight = bTR;
-                            _bLeft = aBL;
+                            _tRight = aTR;
+                            _bLeft = bBL;
                             _bRight = bBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorB && sectUnder60 == sectorD)
                         {
-                            Sectors(bBL, bTL, dTR, dBR);
                             _tLeft = bTL;
                             _tRight = dTR;
                             _bLeft = bBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorA)
                         {
-                            Sectors(aTL, aBL, cTR, cBR);
                             _tLeft = aTL;
                             _tRight = cTR;
                             _bLeft = aBL;
                             _bRight = cBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorD)
                         {
-                            Sectors(cTL, dBL, cTR, dBR);
                             _tLeft = cTL;
                             _tRight = cTR;
                             _bLeft = dBL;
                             _bRight = dBR;
+                            Sectors(_tLeft, _bLeft, _tRight, _bRight);
+                            _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            bOneSector = false;
+                            bTwoSector = true;
+                            bAllSectors = false;
                         }
                     }
                 }
@@ -542,7 +582,8 @@ namespace InfServer.Script.GameType_Eol
             _bottomLefty = bottomLeft.y;
             _bottomRightx = bottomRight.x;
             _bottomRighty = bottomRight.y;
-
+            drawCurrentSector();
+            _drawnSector = Environment.TickCount;
             _bBoundariesDrawn = false;
         }
 
@@ -590,7 +631,7 @@ namespace InfServer.Script.GameType_Eol
         public void drawCurrentRecSector()
         {
             short circleMarkLocation = _left;
-            short distanceBetweenCircleMarks = 200;
+            short distanceBetweenCircleMarks = 500;
 
             Helpers.ObjectState state = new Helpers.ObjectState();
             Helpers.ObjectState target = new Helpers.ObjectState();
@@ -624,9 +665,10 @@ namespace InfServer.Script.GameType_Eol
             _tickEolGameStart = Environment.TickCount;
             _gameBegun = true;
             bbetweengames = false;
+            //_arena.flagSpawn();
         }
 
-        public bool gamesEnd()
+        public bool gameEnd()
         {
             _tickEolGameStart = 0;
             _bBoundariesDrawn = false;
@@ -635,6 +677,8 @@ namespace InfServer.Script.GameType_Eol
             sectUnder30 = "";
             sectUnder60 = "";
             bbetweengames = true;
+            _baseScript._bpylonsSpawned = false;
+            //_arena.flagReset();
             return true;
         }
 
@@ -647,6 +691,7 @@ namespace InfServer.Script.GameType_Eol
             sectUnder30 = "";
             sectUnder60 = "";
             bbetweengames = true;
+            //_arena.flagReset();
             return true;
         }
 
@@ -668,6 +713,7 @@ namespace InfServer.Script.GameType_Eol
 
         public bool playerPortal(Player player, LioInfo.Portal portal)
         {
+            
             Helpers.ObjectState warpPoint;
             if (_gameBegun && bbetweengames == false)
             {
