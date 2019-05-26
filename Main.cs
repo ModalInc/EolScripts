@@ -23,6 +23,7 @@ namespace InfServer.Script.GameType_Eol
         private Arena _arena;					//Pointer to our arena class
         private CfgInfo _config;				//The zone config
         private Points _points;                 //Our points
+        private Teams _tm;                       //Teams logic
 
         //Headquarters
         public Headquarters _hqs;               //Our headquarter tracker
@@ -37,12 +38,13 @@ namespace InfServer.Script.GameType_Eol
 
         private int _lastGameCheck;				//The tick at which we last checked for game viability
         private int _lastHQReward;              //The tick at which we last checked for HQ rewards
-        
+
 
         //KOTH
         private Team _victoryKothTeam;			//The team currently winning!
         private int _tickGameLastTickerUpdate;  //The tick at which the ticker was last updated
         private int _tickGameStarting;			//The tick at which the game began starting (0 == not initiated)
+        private int _tickKOTHGameStarting;
         private int _tickGameStart;				//The tick at which the game started (0 == stopped)
         private int _tickEolGameStart;
         private int _tickKothGameStart;
@@ -61,7 +63,8 @@ namespace InfServer.Script.GameType_Eol
         //Settings
         private int _pointSmallChange;                  //The small change to # of points (ex: kills, turret kills, etc)
         private int _pointPeriodicChange;               //The change to # of points based on periodic flag rewards
-        
+
+        public int _pylonLocation;
 
         //Scores
         private Dictionary<Player, int> _healingDone;   //Keep track of healing done by players
@@ -91,7 +94,7 @@ namespace InfServer.Script.GameType_Eol
             get { return _playerCrownStatus.Where(p => !p.Value.crown).Select(p => p.Key).ToList(); }
         }
         private List<Team> _crownTeams;
-        
+
         /// Stores our player streak information
         private class PlayerStreak
         {
@@ -106,7 +109,7 @@ namespace InfServer.Script.GameType_Eol
         public bool _bpylonsSpawned;
         public bool _gameBegun;
         public bool _bbetweengames;
-        
+
         public string _currentSector1;
         public string _currentSector2;
 
@@ -135,6 +138,7 @@ namespace InfServer.Script.GameType_Eol
             public void setExists(bool bExists)
             { exists = bExists; }
         }
+
         public Dictionary<int, pylonObject> _usedpylons;
         public Dictionary<int, pylonObject> _pylons;
         public Dictionary<int, pylonObject> _pylonsA;
@@ -160,9 +164,9 @@ namespace InfServer.Script.GameType_Eol
         public const int c_defenseDistanceLeeway = 500;			//The maximum distance leeway a bot can be from the team before it is respawned
         public const int _checkCaptain = 6000;                  //The tick at which we check for a captain  50000
         public const int _checkEngineer = 7500;                 //The tick at which we check for an engineer 70000
-        protected int _tickLastEngineer = 0;                    //Last time we checked for an engineer
-        protected int _tickLastCaptain = 0;                     //Last time we checked for a captain
-        protected int _lastPylonCheck = 0;                      //Last time we check for bot pylons to build hq's at.
+        protected int _tickLastEngineer = 0;                        //Last time we checked for an engineer
+        protected int _tickLastCaptain = 0;                         //Last time we checked for a captain
+        protected int _lastPylonCheck = 0;                          //Last time we check for bot pylons to build hq's at.
 
         public const int c_CaptainPathUpdateInterval = 5000;	//The amount of ticks before an engineer's combat bot updates it's path
 
@@ -170,7 +174,7 @@ namespace InfServer.Script.GameType_Eol
         public Dictionary<Team, int> captainBots;
         public List<Team> engineerBots;
 
-        public int _maxEngineers = 1;                           //Maximum amount of engineer bots that will spawn in game
+        public int _maxEngineers;                               //Maximum amount of engineer bots that will spawn in game
         public int _currentEngineers = 0;                       //Current amount of engineer bots playing in the game
         public int[] _lastPylon;                                //Array of all pylons that are being used
 
@@ -184,7 +188,7 @@ namespace InfServer.Script.GameType_Eol
         public string botTeamName3 = "Bot Team - NewJack Raiders";
 
         Random _rand;
-        
+
 
 
         ///////////////////////////////////////////////////
@@ -198,9 +202,10 @@ namespace InfServer.Script.GameType_Eol
             _arena = invoker as Arena;
             _config = _arena._server._zoneConfig;
             _minPlayers = Int32.MaxValue;
-            
+
             //Load up our gametype handlers
             _eol = new EolBoundaries(_arena, this);
+            _tm = new Teams(_arena, this);
             //Load up Pylons
             _bpylonsSpawned = false;
             foreach (Arena.FlagState fs in _arena._flags.Values)
@@ -211,9 +216,7 @@ namespace InfServer.Script.GameType_Eol
                 //Register our flag change events
                 fs.TeamChange += onFlagChange;
             }
-            if (_minPlayers == Int32.MaxValue)
-                //No flags? Run blank games
-                _minPlayers = 1;
+
             killStreaks = new Dictionary<string, PlayerStreak>();
 
             //Headquarters stuff!
@@ -225,7 +228,6 @@ namespace InfServer.Script.GameType_Eol
             _rewardInterval = 90 * 1000; // 90 seconds
             _hqs = new Headquarters(_hqlevels);
             _hqs.LevelModify += onHQLevelModify;
-            _minPlayers = Int32.MaxValue;
 
             //Handle bots
             captainBots = new Dictionary<Team, int>(); //Keeps track of captain bots
@@ -346,7 +348,7 @@ namespace InfServer.Script.GameType_Eol
             return true;
         }
 
-            
+
         /// Allows the script to maintain itself
         /// </summary>
         public bool poll()
@@ -357,13 +359,13 @@ namespace InfServer.Script.GameType_Eol
             {
                 _eol.Poll(now);
             }
-            
+
             //Do we have enough people to start a game of KOTH?
             if (now - _lastGameCheck <= Arena.gameCheckInterval)
                 return true;
             _lastGameCheck = now;
 
-            if ((_tickGameStart == 0 || _tickGameStarting == 0) && playing < _minPlayers)
+            if ((_tickGameStart == 0 || _tickGameStarting == 0) && playing < 1)
             {   //Stop the game!
                 _arena.setTicker(1, 1, 0, "Not Enough Players, Join to start game");
             }
@@ -410,7 +412,7 @@ namespace InfServer.Script.GameType_Eol
 
             if (_arena._bGameRunning && playing == 0) { _arena.gameEnd(); }
 
-            if ((now - _lastPylonCheck >= 100000) && _gameBegun == true)
+            if ((now - _lastPylonCheck >= 36000000) && _gameBegun == true) //36000000
             {
                 if (_bpylonsSpawned == false)
                 {
@@ -419,7 +421,7 @@ namespace InfServer.Script.GameType_Eol
                 _lastPylonCheck = now;
             }
             //if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
-            if (now - _tickEolGameStart > 200000 && _eol._gameBegun == true)
+            if (now - _tickEolGameStart > 360000 && _eol._gameBegun == true)
             {
                 if (_activeCrowns.Count == 0)
                 {
@@ -472,10 +474,54 @@ namespace InfServer.Script.GameType_Eol
                 _lastHQReward = now;
             }
 
-            if (playing < 2 && _gameBegun) _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); //30
+            if (playing < 2 && _gameBegun)
+            {
+                if(_eol.sectUnder60 == null)
+                {
+                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); //30
+                }
+                if(_eol.sectUnder60 != null)
+                {
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                }
+             }
+            
             if (playing >= 2 && playing < 60 && _gameBegun) //30
             {
-                if (_eol.sectUnder60 != null) { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                if (_eol.sectUnder60 != null)
+                {
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                }
                 if (_eol.sectUnder60 == null) { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
             }
             if (playing > 60 && _gameBegun)
@@ -493,7 +539,6 @@ namespace InfServer.Script.GameType_Eol
                 _crownTeams = new List<Team>();
             }
 
-            return true;
             //Check for expiring crowners
             if (_tickKothGameStart > 0)
             {
@@ -528,11 +573,11 @@ namespace InfServer.Script.GameType_Eol
                     return true;
                 }
             }
-            
+
             //Update our tickers
-            if (_tickGameStart > 0 && now - _arena._tickGameStarted > 2000)
+            if (_tickGameStart > 2000)
             {
-                if (now - _tickGameLastTickerUpdate > 5000)
+                if (now - _tickGameLastTickerUpdate > 1000)
                 {
                     updateTickers();
                     UpdateCTFTickers();
@@ -540,33 +585,34 @@ namespace InfServer.Script.GameType_Eol
                     _tickGameLastTickerUpdate = now;
                 }
             }
+
             //Do we have enough players to start a game of KOTH?
-            if ((_tickKothGameStart == 0 || _tickGameStarting == 0) && playing < _minPlayers)
+            if ((_tickKothGameStart == 0 || _tickKOTHGameStarting == 0) && playing < 10)
             {	//Stop the game!
-                _arena.setTicker(2, 1, 0, "Not Enough Players for KOTH");
+                _arena.setTicker(1, 2, 0, "Not Enough Players for KOTH");
                 resetKOTH();
             }
 
-             //Do we have enough players to start a game of KOTH?
-            else if (_tickKothGameStart == 0 && _tickGameStarting == 0 && playing >= _minPlayers)
+            //Do we have enough players to start a game of KOTH?
+            else if (_tickKothGameStart == 0 && _tickKOTHGameStarting == 0 && playing >= 10)
             {	//Great! Get going
-                _tickGameStarting = now;
-                _arena.setTicker(2, 1, _config.king.startDelay * 100, "Next KOTH game: ",
-                    delegate()
+                _tickKOTHGameStarting = now;
+                _arena.setTicker(1, 2, _config.king.startDelay * 100, "Next KOTH game: ",
+                    delegate ()
                     {	//Trigger the game start
                         startKOTH();
                     }
                 );
             }
-            
-            if (now - _tickLastCaptain > _checkCaptain)
+
+            if (now - _tickLastCaptain > _checkCaptain && _gameBegun == true)
             {
                 IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _hqVehId);
-
+                _arena.sendArenaMessage("Test capt 1");
                 Player owner = null;
                 if (hqs != null)
                 {
-                    foreach (Vehicle hq in hqs)
+                    foreach (Vehicle hq in hqs.ToList())
                     {//Handle the captains
                         Captain captain = null;
                         if (captain == null)
@@ -577,27 +623,27 @@ namespace InfServer.Script.GameType_Eol
                             {//It's a bot team
                                 id = 437;
                                 captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam1, null, hq._state, this, null) as Captain;
-                                captainBots.Add(botTeam1, 1);
+                                captainBots.Add(botTeam1, 0);
                                 if (botCount.ContainsKey(botTeam1))
                                     botCount[botTeam1] = 0;
                                 else
                                     botCount.Add(botTeam1, 0);
                             }
-                            if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam2) && hq._team == botTeam2)
+                            else if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam2) && hq._team == botTeam2)
                             {//It's a bot team
                                 id = 415;
                                 captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam2, null, hq._state, this, null) as Captain;
-                                captainBots.Add(botTeam2, 2);
+                                captainBots.Add(botTeam2, 0);
                                 if (botCount.ContainsKey(botTeam2))
                                     botCount[botTeam2] = 0;
                                 else
                                     botCount.Add(botTeam2, 0);
                             }
-                            if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam3) && hq._team == botTeam3)
+                            else if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam3) && hq._team == botTeam3)
                             {//It's a bot team
                                 id = 443;
                                 captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam3, null, hq._state, this, null) as Captain;
-                                captainBots.Add(botTeam3, 3);
+                                captainBots.Add(botTeam3, 0);
                                 if (botCount.ContainsKey(botTeam3))
                                     botCount[botTeam3] = 0;
                                 else
@@ -606,12 +652,12 @@ namespace InfServer.Script.GameType_Eol
                         }
                     }
                 }
-
                 _tickLastCaptain = now;
             }
 
-            if (now - _tickLastEngineer > _checkEngineer)
+            if (now - _tickLastEngineer > _checkEngineer && _gameBegun == true)
             {
+                _arena.sendArenaMessage("Test 1");
                 //Should we spawn a bot engineer to go base somewhere?
                 if (_currentEngineers < _maxEngineers)
                 {//Yes
@@ -636,166 +682,171 @@ namespace InfServer.Script.GameType_Eol
                         IEnumerable<Vehicle> pylons = _arena.Vehicles.Where(v => v._type.Id == _pylonVehID);
                         if (pylons.Count() != 0)
                         {
-                            if (playing < 2) //30
+                            if (playing < 30) //30
                             {
                                 _currentSector1 = _eol.sectUnder30;
                                 if (_currentSector1 == "Sector A")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 1, 8736, 6320).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector B")
+                                if (_currentSector1 == "Sector B")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 6320, 8736, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector C")
+                                if (_currentSector1 == "Sector C")
                                 {
                                     pylons = _arena.getVehiclesInArea(8736, 1, 22064, 6320).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector D")
+                                if (_currentSector1 == "Sector D")
                                 {
                                     pylons = _arena.getVehiclesInArea(8736, 6320, 22064, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
+                                _rand = new Random(System.Environment.TickCount);
+                                int rand = _rand.Next(0, pylons.Count());
+                                home = pylons.ElementAt(rand);
                             }
-                            if (playing >= 2 && playing < 60) //30
+                            if (playing >= 30 && playing < 60) //30
                             {
                                 _currentSector1 = _eol.sectUnder30;
                                 _currentSector2 = _eol.sectUnder60;
                                 if (_currentSector1 == "Sector A" && _currentSector2 == "Sector B")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 1, 8736, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector A" && _currentSector2 == "Sector C")
+                                if (_currentSector1 == "Sector A" && _currentSector2 == "Sector C")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 1, 22064, 6320).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector B" && _currentSector2 == "Sector D")
+                                if (_currentSector1 == "Sector B" && _currentSector2 == "Sector D")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 6320, 22064, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector C" && _currentSector2 == "Sector D")
+                                if (_currentSector1 == "Sector C" && _currentSector2 == "Sector D")
                                 {
                                     pylons = _arena.getVehiclesInArea(8736, 1, 22064, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
                                 if (_currentSector1 == "Sector B" && _currentSector2 == "Sector A")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 1, 8736, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector C" && _currentSector2 == "Sector A")
+                                if (_currentSector1 == "Sector C" && _currentSector2 == "Sector A")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 1, 22064, 6320).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector D" && _currentSector2 == "Sector B")
+                                if (_currentSector1 == "Sector D" && _currentSector2 == "Sector B")
                                 {
                                     pylons = _arena.getVehiclesInArea(1, 6320, 22064, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
-                                else if (_currentSector1 == "Sector D" && _currentSector2 == "Sector C")
+                                if (_currentSector1 == "Sector D" && _currentSector2 == "Sector C")
                                 {
                                     pylons = _arena.getVehiclesInArea(8736, 1, 22064, 14368).Where(v => v._type.Id == _pylonVehID);
-                                    _rand = new Random(System.Environment.TickCount);
-                                    int rand = _rand.Next(0, pylons.Count());
-                                    home = pylons.ElementAt(rand);
                                 }
+                                _rand = new Random(System.Environment.TickCount);
+                                int rand = _rand.Next(0, pylons.Count());
+                                home = pylons.ElementAt(rand);
                             }
                             if (playing >= 60)
                             {
                                 pylons = _arena.getVehiclesInArea(1, 1, 22064, 14368).Where(v => v._type.Id == _pylonVehID);
                                 _rand = new Random(System.Environment.TickCount);
-                                int rand = _rand.Next(0, pylons.Count());
+                                int rand = _rand.Next(1, pylons.Count());
                                 home = pylons.ElementAt(rand);
                             }
-                            //Just in case there are no pylons
-                            if (home != null)
+
+                            if (home._type.Id == _pylonVehID)
                             {
-                                if (home._type.Id == _pylonVehID)
-                                {
-                                    Team team = null;
-                                    _arena.sendArenaMessage("An new bot engineer has been deployed to from Pioneer Station.");
-                                    if (_hqs[botTeam1] == null)
-                                        team = botTeam1;
-                                    else if (_hqs[botTeam2] == null)
-                                        team = botTeam2;
-                                    else if (_hqs[botTeam3] == null)
-                                        team = botTeam3;
+                                Team team = null;
+                                _arena.sendArenaMessage("An new bot engineer has been deployed to from Pioneer Station.");
+                                if (_hqs[botTeam1] == null)
+                                    team = botTeam1;
+                                else if (_hqs[botTeam2] == null)
+                                    team = botTeam2;
+                                else if (_hqs[botTeam3] == null)
+                                    team = botTeam3;
 
-                                    Engineer George = _arena.newBot(typeof(Engineer), (ushort)300, team, null, home._state, this) as Engineer;
+                                Engineer George = _arena.newBot(typeof(Engineer), (ushort)463, team, null, home._state, this) as Engineer;
 
-                                    //Find the pylon we are about to destroy and mark it as nonexistent
-                                    foreach (KeyValuePair<int, pylonObject> obj in _usedpylons)
-                                        if (home._state.positionX == obj.Value.getX() && home._state.positionY == obj.Value.getY())
-                                            obj.Value.setExists(false);
+                                //Find the pylon we are about to destroy and mark it as nonexistent
+                                foreach (KeyValuePair<int, pylonObject> obj in _usedpylons)
+                                    if (home._state.positionX == obj.Value.getX() && home._state.positionY == obj.Value.getY())
+                                        obj.Value.setExists(false);
 
-                                    //Destroy our pylon because we will use our hq to respawn and we dont want any other engineers grabbing this one
-                                    home.destroy(false);
+                                if (home._state.positionX == 512 && home._state.positionY == 480)
+                                    _pylonLocation = 1;
+                                if (home._state.positionX == 2736 && home._state.positionY == 5600)
+                                    _pylonLocation = 2;
+                                if (home._state.positionX == 4901 && home._state.positionY == 4740)
+                                    _pylonLocation = 3;
+                                if (home._state.positionX == 7445 && home._state.positionY == 2356)
+                                    _pylonLocation = 4;
+                                if (home._state.positionX == 5504 && home._state.positionY == 7040)
+                                    _pylonLocation = 5;
+                                if (home._state.positionX == 8304 && home._state.positionY == 11008)
+                                    _pylonLocation = 6;
+                                if (home._state.positionX == 6784 && home._state.positionY == 13808)
+                                    _pylonLocation = 7;
+                                if (home._state.positionX == 4117 && home._state.positionY == 9956)
+                                    _pylonLocation = 8;
+                                if (home._state.positionX == 13765 && home._state.positionY == 1236)
+                                    _pylonLocation = 9;
+                                if (home._state.positionX == 17093 && home._state.positionY == 5076)
+                                    _pylonLocation = 10;
+                                if (home._state.positionX == 12565 && home._state.positionY == 5252)
+                                    _pylonLocation = 11;
+                                if (home._state.positionX == 18117 && home._state.positionY == 3316)
+                                    _pylonLocation = 12;
+                                if (home._state.positionX == 12549 && home._state.positionY == 6708)
+                                    _pylonLocation = 13;
+                                if (home._state.positionX == 16981 && home._state.positionY == 10580)
+                                    _pylonLocation = 14;
+                                if (home._state.positionX == 18064 && home._state.positionY == 7584)
+                                    _pylonLocation = 15;
+                                if (home._state.positionX == 11957 && home._state.positionY == 13604)
+                                    _pylonLocation = 16;
+                                
+                                //Destroy our pylon because we will use our hq to respawn and we dont want any other engineers grabbing this one
+                                home.destroy(false);
 
-                                    //Keep track of the engineers
-                                    _currentEngineers++;
-                                    engineerBots.Add(team);
-                                }
-
-                                if (home._type.Id == _hqVehId)
-                                {
-                                    Team team = null;
-                                    if (home._team == botTeam1)
-                                        team = botTeam1;
-                                    else if (home._team == botTeam2)
-                                        team = botTeam2;
-                                    else if (home._team == botTeam3)
-                                        team = botTeam3;
-
-                                    Engineer Filbert = _arena.newBot(typeof(Engineer), (ushort)300, team, null, home._state, this) as Engineer;
-
-                                    _currentEngineers++;
-                                    engineerBots.Add(team);
-                                }
+                                //Keep track of the engineers
+                                _currentEngineers++;
+                                engineerBots.Add(team);
                             }
+                        }
+                        else { addPylons(); }
+                    }
+                    //Just in case there are no pylons
+                    else if (home != null)
+                    {
+                        if (home._type.Id == _hqVehId)
+                        {
+                            Team team = null;
+                            _arena.sendArenaMessage("An new bot engineer has been deployed to from Pioneer Station.");
+                            if (home._team == botTeam1)
+                                team = botTeam1;
+                            else if (home._team == botTeam2)
+                                team = botTeam2;
+                            else if (home._team == botTeam3)
+                                team = botTeam3;
+
+                            Engineer Filbert = _arena.newBot(typeof(Engineer), (ushort)463, team, null, home._state, this) as Engineer;
+
+                            _currentEngineers++;
+                            engineerBots.Add(team);
                         }
                     }
                 }
                 _tickLastEngineer = now;
-
             }
-
             return true;
         }
+
+        #region Change Sectors
 
         public void preNewSector()
         {
             _arena.sendArenaMessage("Radiation Wind Change Warning! New Sectors in 90 Seconds get safe, You will be sent to Pioneer Station during sector change", _config.flag.victoryWarningBong);
             _arena.setTicker(1, 1, 90 * 100, "Radiation Wind Change Warning! New Sectors in 90 Seconds: ",
-            delegate()
+            delegate ()
             {
                 newSectorDSRecall();
                 _bbetweengames = true;
@@ -821,18 +872,21 @@ namespace InfServer.Script.GameType_Eol
             }
             _arena.gameEnd();
         }
+
+        #endregion
+
         public void addBot(Player owner, Helpers.ObjectState state, Team team)
         {
             int id = 0;
-
             if (owner == null)
             {//This is a bot team
+                //int r = _rand.Next(0, 4);
                 //Find out what bot team this is
                 switch (captainBots[team])
                 {
-                    case 1: id = 437; break; //BotTeam1
-                    case 2: id = 415; break; //BotTeam2
-                    case 3: id = 443; break; //BotTeam3
+                    case 1: id = 143; break; //Bot team 1
+                    case 2: id = 140; break; //Bot team 2
+                    case 3: id = 141; break; //Bot team 3
                 }
                 //Spawn a random bot in their faction
                 if (botCount.ContainsKey(team))
@@ -845,9 +899,9 @@ namespace InfServer.Script.GameType_Eol
 
         public void addPylons()
         {
-            int playing = _arena.PlayerCount;
+            int playing = _arena.PlayersIngame.Count();
             _usedpylons = new Dictionary<int, pylonObject>();
-            if (playing < 1) //30
+            if (playing < 2) //30
             {
                 _currentSector1 = _eol.sectUnder30;
                 switch (_currentSector1)
@@ -1125,51 +1179,7 @@ namespace InfServer.Script.GameType_Eol
             
         }
 
-        public void spawnEngyBot(Vehicle home)
-        {
-            if (home._type.Id == _pylonVehID)
-            {
-                Team team = null;
-                _arena.sendArenaMessage("An engineer has been deployed to from the orbiting Pioneer Station.");
-                if (_hqs[botTeam1] == null)
-                    team = botTeam1;
-                else if (_hqs[botTeam2] == null)
-                    team = botTeam2;
-                else if (_hqs[botTeam3] == null)
-                    team = botTeam3;
-
-                Engineer George = _arena.newBot(typeof(Engineer), (ushort)300, team, null, home._state, this) as Engineer;
-
-                //Find the pylon we are about to destroy and mark it as nonexistent
-                foreach (KeyValuePair<int, pylonObject> obj in _usedpylons)
-                    if (home._state.positionX == obj.Value.getX() && home._state.positionY == obj.Value.getY())
-                        obj.Value.setExists(false);
-
-                //Destroy our pylon because we will use our hq to respawn and we dont want any other engineers grabbing this one
-                home.destroy(false);
-
-                //Keep track of the engineers
-                _currentEngineers++;
-                engineerBots.Add(team);
-            }
-
-            if (home._type.Id == _hqVehId)
-            {
-                Team team = null;
-                if (home._team == botTeam1)
-                    team = botTeam1;
-                else if (home._team == botTeam2)
-                    team = botTeam2;
-                else if (home._team == botTeam3)
-                    team = botTeam3;
-
-                Engineer Filbert = _arena.newBot(typeof(Engineer), (ushort)300, team, null, home._state, this) as Engineer;
-
-                _currentEngineers++;
-                engineerBots.Add(team);
-            }
-        }
-
+        #region KOTH
         /// <summary>
         /// Called when KOTH game has ended
         /// </summary>
@@ -1251,6 +1261,7 @@ namespace InfServer.Script.GameType_Eol
 
             endKOTH();
         }
+        
 
         /// <summary>
         /// Updates our tickers for KOTH
@@ -1292,6 +1303,10 @@ namespace InfServer.Script.GameType_Eol
             _playerCrownStatus[p].expireTime = Environment.TickCount + (_config.king.expireTime * 1000);
         }
 
+        #endregion
+
+        #region CTF
+
         /// <summary>
         /// Called when a flag changes team
         /// </summary>
@@ -1324,6 +1339,8 @@ namespace InfServer.Script.GameType_Eol
                 }
             }
         }
+
+        #endregion
 
         /// <summary>
         /// Finds a specific point within a radius with no physics for a player to warp to
@@ -1555,17 +1572,23 @@ namespace InfServer.Script.GameType_Eol
         #endregion
 
 
+        #region game start/end/reset
         /// <summary>
-		/// Called when the game begins
-		/// </summary>
-		[Scripts.Event("Game.Start")]
+        /// Called when the game begins
+        /// </summary>
+        [Scripts.Event("Game.Start")]
         public bool gameStart()
         {   //We've started!
             _tickGameStart = Environment.TickCount;
             _tickKothGameStart = Environment.TickCount;
             _tickGameStarting = 0;
+            _tickKOTHGameStarting = 0;
             _tickGameLastTickerUpdate = Environment.TickCount;
+            //_tickLastEngineer = Environment.TickCount;
+            //_tickLastCaptain = Environment.TickCount;
+            //_lastPylonCheck = Environment.TickCount;
             _eol.gameStart();
+            //addPylons();
             ResetKiller(null);
             killStreaks.Clear();
             _tickEolGameStart = Environment.TickCount;
@@ -1598,15 +1621,21 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _tickKothGameStart = 0;
+            _tickKOTHGameStarting = 0;
+            //_tickLastEngineer = 0;
+            //_tickLastCaptain = 0;
+            //_lastPylonCheck = 0;
             _healingDone = null;
             _eol.gameEnd();
             _tickEolGameStart = 0;
             _gameBegun = false;
             _bbetweengames = true;
-            //foreach (Vehicle v in _arena.Vehicles)
-            //    if (v._type.Type == VehInfo.Types.Computer)
-            //        //Destroy it!
-            //        v.destroy(true);
+            foreach (Vehicle v in _arena.Vehicles)
+                if (v._type.Type == VehInfo.Types.Computer)
+                    //Destroy it!
+                    v.destroy(true);
+            foreach (Bot bot in _arena._bots)
+                bot.bCondemned = true;
             _usedpylons.Clear();
             return true;
         }
@@ -1622,12 +1651,18 @@ namespace InfServer.Script.GameType_Eol
             _eol.gameReset();
             _tickEolGameStart = 0;
             _tickKothGameStart = 0;
+            _tickKOTHGameStarting = 0;
+            //_tickLastEngineer = 0;
+            //_tickLastCaptain = 0;
+            //_lastPylonCheck = 0;
             //_bpylonsSpawned = false;
             _gameBegun = false;
-            //foreach (Vehicle v in _arena.Vehicles)
-            //    if (v._type.Type == VehInfo.Types.Computer)
-            //        //Destroy it!
-            //        v.destroy(true);
+            foreach (Vehicle v in _arena.Vehicles)
+                if (v._type.Type == VehInfo.Types.Computer)
+                    //Destroy it!
+                    v.destroy(true);
+            foreach (Bot bot in _arena._bots)
+                bot.bCondemned = true;
             _usedpylons.Clear();
             //foreach (Player player in _arena.Players)
             //{
@@ -1636,6 +1671,9 @@ namespace InfServer.Script.GameType_Eol
             _bbetweengames = true;
             return true;
         }
+
+        #endregion
+
 
         #region Player Events
 

@@ -32,11 +32,12 @@ namespace InfServer.Script.GameType_Eol
         protected List<Vector3> _path;			//The path to our destination
         protected int _pathTarget;				//The next target node of the path
         protected int _tickLastPath;			//The time at which we last made a path to the player
+        protected int _tickLastCollision;
 
         private WeaponController _weaponClose;  //Our weapon for close range
         private WeaponController _weaponFar;    //Our weapon for anything that is not close range
 
-        protected int radius = 1000;
+        protected int radius = 750;
 
         private float _seperation;
 
@@ -92,6 +93,20 @@ namespace InfServer.Script.GameType_Eol
                 return base.poll();
             }
 
+            int now = Environment.TickCount;
+
+            if (_movement.bCollision && now - _tickLastCollision < 500)
+            {
+                steering.steerDelegate = delegate (InfantryVehicle vehicle)
+                {
+                    Vector3 seek = vehicle.SteerForFlee(steering._lastCollision);
+                    return seek;
+                };
+
+                _tickLastCollision = now;
+                return base.poll();
+            }
+
             //Find out if our owner is gone
             if (owner == null && !_team._name.Contains("Bot Team -"))
             {//Find a new owner if not a bot team
@@ -123,8 +138,6 @@ namespace InfServer.Script.GameType_Eol
                 _baseScript.captainBots.Remove(_team);
                 return false;
             }
-
-            int now = Environment.TickCount;
 
             //Get a list of all the HQs in the arena
             IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _baseScript._hqVehId);

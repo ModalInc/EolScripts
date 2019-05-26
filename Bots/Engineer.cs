@@ -32,8 +32,10 @@ namespace InfServer.Script.GameType_Eol
         protected int _tickLastPath;			//The time at which we last made a path to the player   
         protected int _tickLastRet;             //Last time we ran to a ret
         protected int _tickLastHeal;            //Last time we healed a ret
+        protected int _tickLastCollision;
         private float _seperation;
         private bool _hq;                       //Tells us if HQ exists
+        public int _pylonLocation;
 
         ///////////////////////////////////////////////////
         // Member Functions
@@ -75,6 +77,18 @@ namespace InfServer.Script.GameType_Eol
 
             int now = Environment.TickCount;
 
+            if (_movement.bCollision && now - _tickLastCollision < 500)
+            {
+                steering.steerDelegate = delegate (InfantryVehicle vehicle)
+                {
+                    Vector3 seek = vehicle.SteerForFlee(steering._lastCollision);
+                    return seek;
+                };
+
+                _tickLastCollision = now;
+                return base.poll();
+            }
+
             IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _baseScript._hqVehId);
             foreach (Vehicle hq in hqs)
             {
@@ -89,24 +103,844 @@ namespace InfServer.Script.GameType_Eol
             if (!_hq)
             {
                 _hq = true; //Mark it as existing
-
+                _pylonLocation = _baseScript._pylonLocation;
                 //Create their HQ
-                createVehicle(463, 100, 50, _team); //Build our HQ which will spawn our captain
+                createVehicle(620, 0, 0, _team); //Build our HQ which will spawn our captain
+                Random _rand = new Random();
+                int rand;
+                #region base turret sets
+                switch (_pylonLocation)
+                {
+                    case 1:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -133, 20, _team);
+                                //Build two MGs
+                                createVehicle(400, -264, 84, _team);
+                                createVehicle(400, 245, 84, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 0, 132, _team);
+                                createVehicle(700, 229, -156, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -133, 20, _team);
+                                //Build two MGs
+                                createVehicle(400, -264, 84, _team);
+                                createVehicle(400, 245, 84, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 0, 132, _team);
+                                createVehicle(700, 229, -156, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -133, 20, _team);
+                                //Build two MGs
+                                createVehicle(400, -264, 84, _team);
+                                createVehicle(400, 245, 84, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 0, 132, _team);
+                                createVehicle(700, 229, -156, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -133, 20, _team);
+                                //Build two MGs
+                                createVehicle(400, -264, 84, _team);
+                                createVehicle(400, 245, 84, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 0, 132, _team);
+                                createVehicle(700, 229, -156, _team);
+                                break;
+                        }
+                        break;
+                    case 2:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, 293, 4, _team);
+                                //Build two MGs
+                                createVehicle(400, 168, -92, _team);
+                                createVehicle(400, 168, 96, _team);
+                                //Build a sentry
+                                createVehicle(402, 50, 0, _team);
+                                //Build two plasma
+                                createVehicle(700, 90, 0, _team);
+                                createVehicle(700, 195, -100, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, 293, 4, _team);
+                                //Build two MGs
+                                createVehicle(400, 168, -92, _team);
+                                createVehicle(400, 168, 96, _team);
+                                //Build a sentry
+                                createVehicle(402, 50, 0, _team);
+                                //Build two plasma
+                                createVehicle(700, 90, 0, _team);
+                                createVehicle(700, 195, -100, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, 293, 4, _team);
+                                //Build two MGs
+                                createVehicle(400, 168, -92, _team);
+                                createVehicle(400, 168, 96, _team);
+                                //Build a sentry
+                                createVehicle(402, 50, 0, _team);
+                                //Build two plasma
+                                createVehicle(700, 90, 0, _team);
+                                createVehicle(700, 195, -100, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, 293, 4, _team);
+                                //Build two MGs
+                                createVehicle(400, 168, -92, _team);
+                                createVehicle(400, 168, 96, _team);
+                                //Build a sentry
+                                createVehicle(402, 50, 0, _team);
+                                //Build two plasma
+                                createVehicle(700, 90, 0, _team);
+                                createVehicle(700, 195, -100, _team);
+                                break;
+                        }
+                        break;
+                    case 3:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, 320, -32, _team);
+                                //Build two MGs
+                                createVehicle(400, 90, 0, _team);
+                                createVehicle(400, 368, 0, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, -80, _team);
+                                //Build two plasma
+                                createVehicle(700, 208, -64, _team);
+                                createVehicle(700, -48, -32, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, 320, -32, _team);
+                                //Build two MGs
+                                createVehicle(400, 90, 0, _team);
+                                createVehicle(400, 368, 0, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, -80, _team);
+                                //Build two plasma
+                                createVehicle(700, 208, -64, _team);
+                                createVehicle(700, -48, -32, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, 320, -32, _team);
+                                //Build two MGs
+                                createVehicle(400, 90, 0, _team);
+                                createVehicle(400, 368, 0, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, -80, _team);
+                                //Build two plasma
+                                createVehicle(700, 208, -64, _team);
+                                createVehicle(700, -48, -32, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, 320, -32, _team);
+                                //Build two MGs
+                                createVehicle(400, 90, 0, _team);
+                                createVehicle(400, 368, 0, _team);
+                                //Build a sentry
+                                createVehicle(402, 0, -80, _team);
+                                //Build two plasma
+                                createVehicle(700, 208, -64, _team);
+                                createVehicle(700, -48, -32, _team);
+                                break;
+                        }
+                        break;
+                    case 4:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -80, 0, _team);
+                                //Build two MGs
+                                createVehicle(400, 0, -80, _team);
+                                createVehicle(400, 0, 80, _team);
+                                //Build a sentry
+                                createVehicle(402, -240, -90, _team);
+                                //Build two plasma
+                                createVehicle(700, -195, -100, _team);
+                                createVehicle(700, -195, 100, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -80, 0, _team);
+                                //Build two MGs
+                                createVehicle(400, 0, -80, _team);
+                                createVehicle(400, 0, 80, _team);
+                                //Build a sentry
+                                createVehicle(402, -240, -90, _team);
+                                //Build two plasma
+                                createVehicle(700, -195, -100, _team);
+                                createVehicle(700, -195, 100, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -80, 0, _team);
+                                //Build two MGs
+                                createVehicle(400, 0, -80, _team);
+                                createVehicle(400, 0, 80, _team);
+                                //Build a sentry
+                                createVehicle(402, -240, -90, _team);
+                                //Build two plasma
+                                createVehicle(700, -195, -100, _team);
+                                createVehicle(700, -195, 100, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -80, 0, _team);
+                                //Build two MGs
+                                createVehicle(400, 0, -80, _team);
+                                createVehicle(400, 0, 80, _team);
+                                //Build a sentry
+                                createVehicle(402, -240, -90, _team);
+                                //Build two plasma
+                                createVehicle(700, -195, -100, _team);
+                                createVehicle(700, -195, 100, _team);
+                                break;
+                        }
+                        break;
+                        _pylons.Add(4, new pylonObject(5504, 7040)); // Sector B
+                        _pylons.Add(5, new pylonObject(8304, 11008));// Sector B
+                        _pylons.Add(6, new pylonObject(6784, 13808));// Sector B
+                        _pylons.Add(7, new pylonObject(4117, 9956));// Sector B
+                        _pylons.Add(8, new pylonObject(13765, 1236)); // Sector C
+                        _pylons.Add(9, new pylonObject(17093, 5076)); // Sector C
+                        _pylons.Add(10, new pylonObject(12565, 5252)); // Sector C
+                        _pylons.Add(11, new pylonObject(18117, 3316)); // Sector C
+                        _pylons.Add(12, new pylonObject(12549, 6708)); // Sector D
+                        _pylons.Add(13, new pylonObject(16981, 10580)); // Sector D
+                        _pylons.Add(14, new pylonObject(18064, 7584)); // Sector D
+                        _pylons.Add(15, new pylonObject(11957, 13604)); // Sector D
+                    case 5:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 6:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 7:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 8:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 9:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 10:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 11:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 12:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 13:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 14:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 15:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                    case 16:
+                        rand = _rand.Next(0, 4);
+                        switch (rand)
+                        {
+                            case 1://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 2://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 3://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                            case 4://Build a rocket
+                                createVehicle(825, -75, -25, _team);
+                                //Build two MGs
+                                createVehicle(400, -75, 50, _team);
+                                createVehicle(400, 75, 150, _team);
+                                //Build a sentry
+                                createVehicle(402, -45, 50, _team);
+                                //Build two plasma
+                                createVehicle(700, 75, -50, _team);
+                                createVehicle(700, 25, 80, _team);
+                                break;
+                        }
+                        break;
+                }
+                #endregion
 
                 //////////////////////////////////////////////////
                 //                  Generic Base                //
                 //////////////////////////////////////////////////
 
-
-                //Build a rocket to the left
+                //Build a rocket
                 createVehicle(825, -75, -25, _team);
-
-                createVehicle(700, 25, 80, _team);
-                //Build four MGs around base
+                //Build two MGs
                 createVehicle(400, -75, 50, _team);
-                createVehicle(402, -45, 50, _team);
-                createVehicle(700, 75, -50, _team);
                 createVehicle(400, 75, 150, _team);
+                //Build a sentry
+                createVehicle(402, -45, 50, _team);
+                //Build two plasma
+                createVehicle(700, 75, -50, _team);
+                createVehicle(700, 25, 80, _team);
+
 
                 //Giving them some bounty ??based off population??
 
@@ -117,7 +951,7 @@ namespace InfServer.Script.GameType_Eol
             }
 
             //Run around while healing to hopefully avoid being shot            
-            IEnumerable<Vehicle> turrets = _arena.Vehicles.Where(v => (v._type.Id == 400 || v._type.Id == 825 || v._type.Id == 700 || v._type.Id == 402) && v._team == _team);
+            IEnumerable<Vehicle> turrets = _arena.Vehicles.Where(v => (v._type.Id == 400 || v._type.Id == 825 || v._type.Id == 700 || v._type.Id == 402 || v._type.Id == 620) && v._team == _team);
             Random _rand = new Random(System.Environment.TickCount);
 
             //Only heal a ret once every 7 seconds
@@ -173,10 +1007,7 @@ namespace InfServer.Script.GameType_Eol
             newState.positionZ = _state.positionZ;
             newState.yaw = _state.yaw;
 
-            _arena.newVehicle(
-                        vehicle,
-                        botTeam, null,
-                        newState);
+            _arena.newVehicle(vehicle, botTeam, null, newState);
 
         }
 

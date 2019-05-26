@@ -34,7 +34,7 @@ namespace InfServer.Script.GameType_Eol
         protected List<Vector3> _path;			//The path to our destination
         protected int _pathTarget;				//The next target node of the path
         protected int _tickLastPath;			//The time at which we last made a path to the player   
-
+        protected int _tickLastCollision;
         protected int _tickLastSpawn;               //Tick at which we spawned a bot
         protected int lastCheckedLevel;
         private float _seperation;
@@ -69,9 +69,21 @@ namespace InfServer.Script.GameType_Eol
                 steering.steerDelegate = null; //Stop movements                
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
-            }           
+            }
 
             int now = Environment.TickCount;
+
+            if (_movement.bCollision && now - _tickLastCollision < 500)
+            {
+                steering.steerDelegate = delegate (InfantryVehicle vehicle)
+                {
+                    Vector3 seek = vehicle.SteerForFlee(steering._lastCollision);
+                    return seek;
+                };
+
+                _tickLastCollision = now;
+                return base.poll();
+            }
 
             //Spawn our team or respawn dead teammates
 

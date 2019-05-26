@@ -34,6 +34,7 @@ namespace InfServer.Script.GameType_Eol
         protected List<Vector3> _path;			//The path to our destination
         protected int _pathTarget;				//The next target node of the path
         protected int _tickLastPath;			//The time at which we last made a path to the player   
+        protected int _tickLastCollision;
 
         protected int _tickLastSpawn;               //Tick at which we spawned a bot
         protected int lastCheckedLevel;
@@ -79,6 +80,20 @@ namespace InfServer.Script.GameType_Eol
                 return base.poll();
             }
 
+            int now = Environment.TickCount;
+
+            if (_movement.bCollision && now - _tickLastCollision < 500)
+            {
+                steering.steerDelegate = delegate (InfantryVehicle vehicle)
+                {
+                    Vector3 seek = vehicle.SteerForFlee(steering._lastCollision);
+                    return seek;
+                };
+
+                _tickLastCollision = now;
+                return base.poll();
+            }
+
             //Find out if our owner is gone and if he is destroy ourselves
             if (owner == null && !_team._name.Contains("Bot Team -"))
             {//Find a new owner if not a bot team
@@ -101,8 +116,6 @@ namespace InfServer.Script.GameType_Eol
                 _baseScript.captainBots.Remove(_team);
                 return false;
             }
-
-            int now = Environment.TickCount;
 
             //Get a list of all the HQs in the arena
             IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _baseScript._hqVehId);
@@ -206,12 +219,7 @@ namespace InfServer.Script.GameType_Eol
                 if (distance <= 150)
                 {//Patrol
                     //Maintain defense bots
-                    if (owner != null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
-                    {//Not a bot team
-                        _baseScript.addBot(owner, _state, null);
-                        _tickLastSpawn = now;
-                    }
-                    else if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
+                    if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
                     {//Bot team 
                         //should probably get rid of owner for all bots
                         _baseScript.addBot(null, _state, _team);
