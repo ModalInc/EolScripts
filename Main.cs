@@ -138,7 +138,7 @@ namespace InfServer.Script.GameType_Eol
             public void setExists(bool bExists)
             { exists = bExists; }
         }
-
+        
         public Dictionary<int, pylonObject> _usedpylons;
         public Dictionary<int, pylonObject> _pylons;
         public Dictionary<int, pylonObject> _pylonsA;
@@ -273,7 +273,7 @@ namespace InfServer.Script.GameType_Eol
             _pylons.Add(9, new pylonObject(17093, 5076)); // Sector C
             _pylons.Add(10, new pylonObject(12565, 5252)); // Sector C
             _pylons.Add(11, new pylonObject(18117, 3316)); // Sector C
-            _pylons.Add(12, new pylonObject(12549, 6708)); // Sector D
+            _pylons.Add(12, new pylonObject(20661, 7924)); // Sector D
             _pylons.Add(13, new pylonObject(16981, 10580)); // Sector D
             _pylons.Add(14, new pylonObject(18064, 7584)); // Sector D
             _pylons.Add(15, new pylonObject(11957, 13604)); // Sector D
@@ -297,7 +297,7 @@ namespace InfServer.Script.GameType_Eol
             _pylonsC.Add(3, new pylonObject(18117, 3316)); // Sector C
 
             _pylonsD = new Dictionary<int, pylonObject>();
-            _pylonsD.Add(0, new pylonObject(12549, 6708)); // Sector D
+            _pylonsD.Add(0, new pylonObject(20661, 7924)); // Sector D
             _pylonsD.Add(1, new pylonObject(16981, 10580)); // Sector D
             _pylonsD.Add(2, new pylonObject(18064, 7584)); // Sector D
             _pylonsD.Add(3, new pylonObject(11957, 13604)); // Sector D
@@ -327,7 +327,7 @@ namespace InfServer.Script.GameType_Eol
             _pylonsCD.Add(1, new pylonObject(17093, 5076)); // Sector C
             _pylonsCD.Add(2, new pylonObject(12565, 5252)); // Sector C
             _pylonsCD.Add(3, new pylonObject(18117, 3316)); // Sector C
-            _pylonsCD.Add(4, new pylonObject(12549, 6708)); // Sector D
+            _pylonsCD.Add(4, new pylonObject(20661, 7924)); // Sector D
             _pylonsCD.Add(5, new pylonObject(16981, 10580)); // Sector D
             _pylonsCD.Add(6, new pylonObject(18064, 7584)); // Sector D
             _pylonsCD.Add(7, new pylonObject(11957, 13604)); // Sector D
@@ -337,14 +337,14 @@ namespace InfServer.Script.GameType_Eol
             _pylonsBD.Add(1, new pylonObject(8304, 11008));// Sector B
             _pylonsBD.Add(2, new pylonObject(6784, 13808));// Sector B
             _pylonsBD.Add(3, new pylonObject(4117, 9956));// Sector B
-            _pylonsBD.Add(4, new pylonObject(12549, 6708)); // Sector D
+            _pylonsBD.Add(4, new pylonObject(20661, 7924)); // Sector D
             _pylonsBD.Add(5, new pylonObject(16981, 10580)); // Sector D
             _pylonsBD.Add(6, new pylonObject(18064, 7584)); // Sector D
             _pylonsBD.Add(7, new pylonObject(11957, 13604)); // Sector D
 
             _usedpylons = new Dictionary<int, pylonObject>();
             _lastPylon = null;
-
+            
             return true;
         }
 
@@ -373,7 +373,7 @@ namespace InfServer.Script.GameType_Eol
             else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
             {	//Great! Get going
                 _tickGameStarting = now;
-                _arena.setTicker(1, 1, _config.flag.startDelay * 100, "Next game starts in: ",
+                _arena.setTicker(1, 1, _config.flag.startDelay * 80, "Next game starts in: ",
                     delegate ()
                     {	//Trigger the game start
                         _arena.gameStart();
@@ -795,7 +795,7 @@ namespace InfServer.Script.GameType_Eol
                                     _pylonLocation = 11;
                                 if (home._state.positionX == 18117 && home._state.positionY == 3316)
                                     _pylonLocation = 12;
-                                if (home._state.positionX == 12549 && home._state.positionY == 6708)
+                                if (home._state.positionX == 20661 && home._state.positionY == 7924)
                                     _pylonLocation = 13;
                                 if (home._state.positionX == 16981 && home._state.positionY == 10580)
                                     _pylonLocation = 14;
@@ -926,7 +926,7 @@ namespace InfServer.Script.GameType_Eol
                         _usedpylons.Add(3, new pylonObject(18117, 3316)); // Sector C
                         break;
                     case "Sector D":
-                        _usedpylons.Add(0, new pylonObject(12549, 6708)); // Sector D
+                        _usedpylons.Add(0, new pylonObject(20661, 7924)); // Sector D
                         _usedpylons.Add(1, new pylonObject(16981, 10580)); // Sector D
                         _usedpylons.Add(2, new pylonObject(18064, 7584)); // Sector D
                         _usedpylons.Add(3, new pylonObject(11957, 13604)); // Sector D
@@ -1020,7 +1020,7 @@ namespace InfServer.Script.GameType_Eol
                                 _usedpylons.Add(1, new pylonObject(8304, 11008));// Sector B
                                 _usedpylons.Add(2, new pylonObject(6784, 13808));// Sector B
                                 _usedpylons.Add(3, new pylonObject(4117, 9956));// Sector B
-                                _usedpylons.Add(4, new pylonObject(12549, 6708)); // Sector D
+                                _usedpylons.Add(4, new pylonObject(20661, 7924)); // Sector D
                                 _usedpylons.Add(5, new pylonObject(16981, 10580)); // Sector D
                                 _usedpylons.Add(6, new pylonObject(18064, 7584)); // Sector D
                                 _usedpylons.Add(7, new pylonObject(11957, 13604)); // Sector D
@@ -1064,7 +1064,7 @@ namespace InfServer.Script.GameType_Eol
                                 _usedpylons.Add(1, new pylonObject(17093, 5076)); // Sector C
                                 _usedpylons.Add(2, new pylonObject(12565, 5252)); // Sector C
                                 _usedpylons.Add(3, new pylonObject(18117, 3316)); // Sector C
-                                _usedpylons.Add(4, new pylonObject(12549, 6708)); // Sector D
+                                _usedpylons.Add(4, new pylonObject(20661, 7924)); // Sector D
                                 _usedpylons.Add(5, new pylonObject(16981, 10580)); // Sector D
                                 _usedpylons.Add(6, new pylonObject(18064, 7584)); // Sector D
                                 _usedpylons.Add(7, new pylonObject(11957, 13604)); // Sector D
@@ -1098,7 +1098,7 @@ namespace InfServer.Script.GameType_Eol
                                 _usedpylons.Add(1, new pylonObject(17093, 5076)); // Sector C
                                 _usedpylons.Add(2, new pylonObject(12565, 5252)); // Sector C
                                 _usedpylons.Add(3, new pylonObject(18117, 3316)); // Sector C
-                                _usedpylons.Add(4, new pylonObject(12549, 6708)); // Sector D
+                                _usedpylons.Add(4, new pylonObject(20661, 7924)); // Sector D
                                 _usedpylons.Add(5, new pylonObject(16981, 10580)); // Sector D
                                 _usedpylons.Add(6, new pylonObject(18064, 7584)); // Sector D
                                 _usedpylons.Add(7, new pylonObject(11957, 13604)); // Sector D
@@ -1108,7 +1108,7 @@ namespace InfServer.Script.GameType_Eol
                                 _usedpylons.Add(1, new pylonObject(8304, 11008));// Sector B
                                 _usedpylons.Add(2, new pylonObject(6784, 13808));// Sector B
                                 _usedpylons.Add(3, new pylonObject(4117, 9956));// Sector B
-                                _usedpylons.Add(4, new pylonObject(12549, 6708)); // Sector D
+                                _usedpylons.Add(4, new pylonObject(20661, 7924)); // Sector D
                                 _usedpylons.Add(5, new pylonObject(16981, 10580)); // Sector D
                                 _usedpylons.Add(6, new pylonObject(18064, 7584)); // Sector D
                                 _usedpylons.Add(7, new pylonObject(11957, 13604)); // Sector D
@@ -1151,7 +1151,7 @@ namespace InfServer.Script.GameType_Eol
                 _usedpylons.Add(9, new pylonObject(17093, 5076)); // Sector C
                 _usedpylons.Add(10, new pylonObject(12565, 5252)); // Sector C
                 _usedpylons.Add(11, new pylonObject(18117, 3316)); // Sector C
-                _usedpylons.Add(12, new pylonObject(12549, 6708)); // Sector D
+                _usedpylons.Add(12, new pylonObject(20661, 7924)); // Sector D
                 _usedpylons.Add(13, new pylonObject(16981, 10580)); // Sector D
                 _usedpylons.Add(14, new pylonObject(18064, 7584)); // Sector D
                 _usedpylons.Add(15, new pylonObject(11957, 13604)); // Sector D
@@ -1634,8 +1634,6 @@ namespace InfServer.Script.GameType_Eol
                 if (v._type.Type == VehInfo.Types.Computer)
                     //Destroy it!
                     v.destroy(true);
-            foreach (Bot bot in _arena._bots)
-                bot.bCondemned = true;
             _usedpylons.Clear();
             return true;
         }
@@ -1661,8 +1659,6 @@ namespace InfServer.Script.GameType_Eol
                 if (v._type.Type == VehInfo.Types.Computer)
                     //Destroy it!
                     v.destroy(true);
-            foreach (Bot bot in _arena._bots)
-                bot.bCondemned = true;
             _usedpylons.Clear();
             //foreach (Player player in _arena.Players)
             //{
