@@ -104,6 +104,7 @@ namespace InfServer.Script.GameType_Eol
             public int lastKillerCount { get; set; }
         }
 
+        
         private Dictionary<string, PlayerStreak> killStreaks;
         private Player lastKiller;
         public bool _bpylonsSpawned;
@@ -152,8 +153,8 @@ namespace InfServer.Script.GameType_Eol
 
         //Bots
         //Perimeter defense Bots
-        public const float c_defenseInitialAmountPP = 0.5f;		//The amount of defense bots per player initially spawned (minimum of 1)
-        public const int c_defenseAddTimerGrowth = 8;			//The amount of seconds to add to the new bot timer for each person missing from the team
+        public const float c_defenseInitialAmountPP = 0.8f;		//The amount of defense bots per player initially spawned (minimum of 1)
+        public const int c_defenseAddTimerGrowth = 18;			//The amount of seconds to add to the new bot timer for each person missing from the team
         public const int c_defenseAddTimer = 36;			    //The amount of seconds between allowing new defense bots
         public const int c_defenseRespawnTimeGrowth = 400;		//The amount of time to add to the respawn timer for each missing player
         public const int c_defenseRespawnTime = 600;		    //The amount of ms between spawning new zombies
@@ -173,6 +174,9 @@ namespace InfServer.Script.GameType_Eol
         public Dictionary<Team, int> botCount;
         public Dictionary<Team, int> captainBots;
         public List<Team> engineerBots;
+
+        public List<Bot> _bots;
+        public List<Bot> _condemnedBots;
 
         public int _maxEngineers;                               //Maximum amount of engineer bots that will spawn in game
         public int _currentEngineers = 0;                       //Current amount of engineer bots playing in the game
@@ -234,6 +238,10 @@ namespace InfServer.Script.GameType_Eol
             botCount = new Dictionary<Team, int>(); //Counts of all defense bots and their teams
             engineerBots = new List<Team>();
             _currentEngineers = 0;  //The number of engineers currently alive
+            if (_bots == null)
+                _bots = new List<Bot>();
+
+            _condemnedBots = new List<Bot>();
 
             botTeam1 = new Team(_arena, _arena._server);
             botTeam1._name = botTeamName1;
@@ -369,16 +377,15 @@ namespace InfServer.Script.GameType_Eol
             {   //Stop the game!
                 _arena.setTicker(1, 1, 0, "Not Enough Players, Join to start game");
             }
-            //Do we have enough players to start a CTF game?
+            //Do we have enough players to start a game?
             else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
             {	//Great! Get going
                 _tickGameStarting = now;
-                _arena.setTicker(1, 1, _config.flag.startDelay * 80, "Next game starts in: ",
+                _arena.setTicker(1, 1, 15 * 100, "Next game: ",
                     delegate ()
-                    {	//Trigger the game start
+                    {   //Trigger the game start
                         _arena.gameStart();
-                    }
-                );
+                    });
             }
             //Maybe the game is in progress...
             else
@@ -608,7 +615,6 @@ namespace InfServer.Script.GameType_Eol
             if (now - _tickLastCaptain > _checkCaptain && _gameBegun == true)
             {
                 IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _hqVehId);
-                _arena.sendArenaMessage("Test capt 1");
                 Player owner = null;
                 if (hqs != null)
                 {
@@ -617,6 +623,8 @@ namespace InfServer.Script.GameType_Eol
                         Captain captain = null;
                         if (captain == null)
                         {//They don't have a captain
+                            if (_bots == null)
+                                _bots = new List<Bot>();
                             int id = 0;
                             //See if they have a captain for their HQ, if not spawn one
                             if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam1) && hq._team == botTeam1)
@@ -624,6 +632,7 @@ namespace InfServer.Script.GameType_Eol
                                 id = 437;
                                 captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam1, null, hq._state, this, null) as Captain;
                                 captainBots.Add(botTeam1, 0);
+                                _bots.Add(captain);
                                 if (botCount.ContainsKey(botTeam1))
                                     botCount[botTeam1] = 0;
                                 else
@@ -634,6 +643,7 @@ namespace InfServer.Script.GameType_Eol
                                 id = 415;
                                 captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam2, null, hq._state, this, null) as Captain;
                                 captainBots.Add(botTeam2, 0);
+                                _bots.Add(captain);
                                 if (botCount.ContainsKey(botTeam2))
                                     botCount[botTeam2] = 0;
                                 else
@@ -644,6 +654,7 @@ namespace InfServer.Script.GameType_Eol
                                 id = 443;
                                 captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam3, null, hq._state, this, null) as Captain;
                                 captainBots.Add(botTeam3, 0);
+                                _bots.Add(captain);
                                 if (botCount.ContainsKey(botTeam3))
                                     botCount[botTeam3] = 0;
                                 else
@@ -657,7 +668,8 @@ namespace InfServer.Script.GameType_Eol
 
             if (now - _tickLastEngineer > _checkEngineer && _gameBegun == true)
             {
-                _arena.sendArenaMessage("Test 1");
+                if (_bots == null)
+                    _bots = new List<Bot>();
                 //Should we spawn a bot engineer to go base somewhere?
                 if (_currentEngineers < _maxEngineers)
                 {//Yes
@@ -756,7 +768,7 @@ namespace InfServer.Script.GameType_Eol
                             if (home._type.Id == _pylonVehID)
                             {
                                 Team team = null;
-                                _arena.sendArenaMessage("An new bot engineer has been deployed to from Pioneer Station.");
+                                _arena.sendArenaMessage("A new engineer has been deployed to from Pioneer Station.");
                                 if (_hqs[botTeam1] == null)
                                     team = botTeam1;
                                 else if (_hqs[botTeam2] == null)
@@ -765,6 +777,7 @@ namespace InfServer.Script.GameType_Eol
                                     team = botTeam3;
 
                                 Engineer George = _arena.newBot(typeof(Engineer), (ushort)463, team, null, home._state, this) as Engineer;
+                                _bots.Add(George);
 
                                 //Find the pylon we are about to destroy and mark it as nonexistent
                                 foreach (KeyValuePair<int, pylonObject> obj in _usedpylons)
@@ -828,8 +841,8 @@ namespace InfServer.Script.GameType_Eol
                             else if (home._team == botTeam3)
                                 team = botTeam3;
 
-                            Engineer Filbert = _arena.newBot(typeof(Engineer), (ushort)463, team, null, home._state, this) as Engineer;
-
+                            Engineer Filbert = _arena.newBot(typeof(Engineer), (ushort)464, team, null, home._state, this) as Engineer;
+                            _bots.Add(Filbert);
                             _currentEngineers++;
                             engineerBots.Add(team);
                         }
@@ -877,6 +890,9 @@ namespace InfServer.Script.GameType_Eol
 
         public void addBot(Player owner, Helpers.ObjectState state, Team team)
         {
+            if (_bots == null)
+                _bots = new List<Bot>();
+
             int id = 0;
             if (owner == null)
             {//This is a bot team
@@ -894,6 +910,7 @@ namespace InfServer.Script.GameType_Eol
                 else
                     botCount.Add(team, 0);
                 BasicDefense dBot = _arena.newBot(typeof(BasicDefense), (ushort)id, team, null, state, this, null) as BasicDefense;
+                _bots.Add(dBot);
             }
         }
 
@@ -1188,7 +1205,7 @@ namespace InfServer.Script.GameType_Eol
             _arena.sendArenaMessage("KOTH has ended");
 
             _tickKothGameStart = 0;
-            _tickGameStarting = 0;
+            _tickKOTHGameStarting = 0;
             _victoryKothTeam = null;
             _crownTeams = null;
 
@@ -1203,7 +1220,7 @@ namespace InfServer.Script.GameType_Eol
         public void resetKOTH()
         {//Game reset, perhaps start a new one
             _tickKothGameStart = 0;
-            _tickGameStarting = 0;
+            _tickKOTHGameStarting = 0;
 
             _victoryKothTeam = null;
         }
@@ -1215,7 +1232,7 @@ namespace InfServer.Script.GameType_Eol
         {
             //We've started!
             _tickKothGameStart = Environment.TickCount;
-            _tickGameStarting = 0;
+            _tickKOTHGameStarting = 0;
             _playerCrownStatus.Clear();
 
             //Let everyone know
@@ -1635,6 +1652,14 @@ namespace InfServer.Script.GameType_Eol
                     //Destroy it!
                     v.destroy(true);
             _usedpylons.Clear();
+            foreach (Bot bot in _bots)
+                _condemnedBots.Add(bot);
+
+            foreach (Bot bot in _condemnedBots)
+                bot.destroy(false);
+
+            _condemnedBots.Clear();
+            _bots.Clear();
             return true;
         }
 
@@ -1665,6 +1690,14 @@ namespace InfServer.Script.GameType_Eol
             //    _arena.flagResetPlayer(player);
             //}
             _bbetweengames = true;
+            foreach (Bot bot in _bots)
+                _condemnedBots.Add(bot);
+
+            foreach (Bot bot in _condemnedBots)
+                bot.destroy(false);
+
+            _condemnedBots.Clear();
+            _bots.Clear();
             return true;
         }
 

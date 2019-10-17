@@ -25,7 +25,7 @@ namespace InfServer.Script.GameType_Eol
         public Player owner;					//The headquarters we defend
         private Player targetEnemy;             //The enemy that is by our HQ
         private Vehicle vHq;                    //Our HQ
-        private int _stalkRadius = 500;
+        private int _stalkRadius = 750;
 
         private Random _rand = new Random(System.Environment.TickCount);
 
@@ -35,6 +35,7 @@ namespace InfServer.Script.GameType_Eol
         protected int _pathTarget;				//The next target node of the path
         protected int _tickLastPath;			//The time at which we last made a path to the player   
         protected int _tickLastCollision;
+        private int _tickLastRadarDot;
 
         protected int _tickLastSpawn;               //Tick at which we spawned a bot
         protected int lastCheckedLevel;
@@ -296,6 +297,14 @@ namespace InfServer.Script.GameType_Eol
                     }
                 }
             }
+            if (now - _tickLastRadarDot >= 900)
+            {
+                _tickLastRadarDot = now;
+                IEnumerable<Player> enemies = _arena.Players.Where(p => p._team != _team);
+                //Helpers.Player_RouteExplosion(_team.ActivePlayers, 1131, _state.positionX, _state.positionY, 0, 0, 0);
+                //Helpers.Player_RouteExplosion(enemies, 1130, _state.positionX, _state.positionY, 0, 0, 0);
+            }
+
 
             //Handle normal functionality
             return base.poll();

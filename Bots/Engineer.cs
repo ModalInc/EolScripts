@@ -920,15 +920,15 @@ namespace InfServer.Script.GameType_Eol
                 //////////////////////////////////////////////////
 
                 //Build a rocket
-                createVehicle(825, -75, -25, _team);
+                //createVehicle(825, -75, -25, _team);
                 //Build two MGs
-                createVehicle(400, -75, 50, _team);
-                createVehicle(400, 75, 150, _team);
+                //createVehicle(400, -75, 50, _team);
+                //createVehicle(400, 75, 150, _team);
                 //Build a sentry
-                createVehicle(402, -45, 50, _team);
+                //createVehicle(402, -45, 50, _team);
                 //Build two plasma
-                createVehicle(700, 75, -50, _team);
-                createVehicle(700, 25, 80, _team);
+                //createVehicle(700, 75, -50, _team);
+                //createVehicle(700, 25, 80, _team);
 
 
                 //Giving them some bounty ??based off population??
