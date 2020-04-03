@@ -15,8 +15,7 @@ using Bnoerj.AI.Steering;
 
 namespace InfServer.Script.GameType_Eol
 {
-    //Captain bot for perimeter defense bots
-    //Will spawn other bots to defend a perimeter and defend his team's HQ
+    //Captain bot for flag chasing pirates
     class RoamingCaptain : Bot
     {
         ///////////////////////////////////////////////////
@@ -30,7 +29,7 @@ namespace InfServer.Script.GameType_Eol
         private Random _rand = new Random(System.Environment.TickCount);
 
         protected SteeringController steering;	//System for controlling the bot's steering
-        protected Script_Eol eol;    			//The CTFHQ script
+        protected Script_Eol eol;    			//The Eol base script
         protected List<Vector3> _path;			//The path to our destination
         protected int _pathTarget;				//The next target node of the path
         protected int _tickLastPath;			//The time at which we last made a path to the player   
@@ -63,12 +62,33 @@ namespace InfServer.Script.GameType_Eol
         /// </summary>
         public override bool poll()
         {
+
+            //Maintain defense bots
+            if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._maxRoamingBots && now - _tickLastSpawn > 4000)
+            {//Bot team 
+             //should probably get rid of owner for all bots
+                _baseScript.addBotRoam(null, _state, _team);
+                _tickLastSpawn = now;
+            }
+
             //Dead? Do nothing
             if (IsDead)
             {//Dead
                 steering.steerDelegate = null; //Stop movements                
                 bCondemned = true; //Make sure the bot gets removed in polling
+                eol.roamingCaptianBots.Remove(_team);
+                eol.roambots.Remove(_team);
                 return base.poll();
+            }
+
+            //Do we have a flagger to attack?
+            if (_baseScript._flags[_team] == null)
+            {
+                kill(null);
+                bCondemned = true;
+                eol.roamingCaptianBots.Remove(_team);
+                eol.roambots.Remove(_team);
+                return false;
             }
 
             int now = Environment.TickCount;
@@ -87,6 +107,11 @@ namespace InfServer.Script.GameType_Eol
 
             //Spawn our team or respawn dead teammates
 
+            if (_arena._bGameRunning)
+            {
+                if (_arena._flags.Where(f => f.Value.team == _team).Count() > 1)
+                    pushToEnemyFlag(now);
+            }
 
             //Find out of we are suppose to be attacking anyone
             if (targetEnemy == null || !isValidTarget(targetEnemy))
@@ -155,6 +180,69 @@ namespace InfServer.Script.GameType_Eol
 
             //Handle normal functionality
             return base.poll();
+        }
+
+        public void pushToEnemyFlag(int now)
+        {
+            Arena.FlagState targetFlag;
+            List<Arena.FlagState> enemyflags;
+            List<Arena.FlagState> flags;
+
+            flags = _arena._flags.Values.OrderBy(f => f.posX).ToList();
+
+            enemyflags = flags.Where(f => f.team != _team).ToList();
+
+            if (enemyflags.Count >= 1)
+                targetFlag = enemyflags[_rand.Next(0, 2)];
+            else
+                targetFlag = enemyflags[0];
+
+
+            Helpers.ObjectState target = new Helpers.ObjectState();
+            target.positionX = targetFlag.posX;
+            target.positionY = targetFlag.posY;
+
+
+
+            //What is our distance to the target?
+            double distance = (_state.position() - target.position()).Length;
+
+
+            //Does our path need to be updated?
+            if (now - _tickLastPath > c_pathUpdateInterval)
+            {
+                _arena._pathfinder.queueRequest(
+                           (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                           (short)(target.positionX / 16), (short)(target.positionY / 16),
+                           delegate (List<Vector3> path, int pathLength)
+                           {
+                               if (path != null)
+                               {   //Is the path too long?
+                                   if (pathLength > c_MaxPath)
+                                   {   //Destroy ourself and let another zombie take our place
+                                       //_path = null; Destroying Disasbled for now, may replace with a distance from enemy check
+                                       //destroy(true);
+                                       _path = path;
+                                       _pathTarget = 1;
+                                   }
+                                   else
+                                   {
+                                       _path = path;
+                                       _pathTarget = 1;
+                                   }
+                               }
+
+                               _tickLastPath = now;
+                           }
+                );
+            }
+
+            //Navigate to him
+            if (_path == null)
+                //If we can't find out way to him, just mindlessly walk in his direction for now
+                steering.steerDelegate = steerForPersuePlayer;
+            else
+                steering.steerDelegate = steerAlongPath;
         }
 
         /// <summary>

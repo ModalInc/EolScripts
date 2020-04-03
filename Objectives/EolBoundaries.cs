@@ -72,8 +72,6 @@ namespace InfServer.Script.GameType_Eol
         public short _bottomRightx;
         public short _bottomRighty;
 
-
-
         public struct Point
         {
             public short x;

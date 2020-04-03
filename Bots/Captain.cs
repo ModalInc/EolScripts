@@ -93,10 +93,11 @@ namespace InfServer.Script.GameType_Eol
 
                 _tickLastCollision = now;
                 return base.poll();
+
             }
 
             //Find out if our owner is gone and if he is destroy ourselves
-            if (owner == null && !_team._name.Contains("Bot Team -"))
+            if (owner == null && !_team._name.Contains(_team))
             {//Find a new owner if not a bot team
                 if (_team.ActivePlayerCount > 0)
                     owner = _team.ActivePlayers.Last();
@@ -220,7 +221,7 @@ namespace InfServer.Script.GameType_Eol
                 if (distance <= 150)
                 {//Patrol
                     //Maintain defense bots
-                    if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._hqs[_team].Level - 3 && now - _tickLastSpawn > 4000)
+                    if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < maxDefenseBots && now - _tickLastSpawn > 4000)
                     {//Bot team 
                         //should probably get rid of owner for all bots
                         _baseScript.addBot(null, _state, _team);

@@ -108,7 +108,7 @@ namespace InfServer.Script.GameType_Eol
             }
 
             //Find out if our owner is gone
-            if (owner == null && !_team._name.Contains("Bot Team -"))
+            if (owner == null && !_team._name.Contains(_team))
             {//Find a new owner if not a bot team
                 if (_team.ActivePlayerCount >= 0)
                     owner = _team.ActivePlayers.Last();
@@ -210,7 +210,7 @@ namespace InfServer.Script.GameType_Eol
                 else
                 {	
                     //Does our path need to be updated?
-                    if (now - _tickLastPath > Script_Eol.c_defensePathUpdateInterval)
+                    if (now - _tickLastPath > _baseScript.c_defensePathUpdateInterval)
                     {
                         //Update it!
                         _tickLastPath = int.MaxValue;

@@ -36,6 +36,24 @@ namespace InfServer.Script.GameType_Eol
         private float _seperation;
         private bool _hq;                       //Tells us if HQ exists
         public int _pylonLocation;
+        private int _maxwalls = 0;
+
+        public class pointObject
+        {
+            short x;      //X coordinate of hq
+            short y;      //Y coordinate of hq
+
+            public pointObject(short xPos, short yPos)
+            {
+                exists = false;
+                x = xPos;
+                y = yPos;
+            }
+            public short getX()
+            { return x; }
+            public short getY()
+            { return y; }
+        }
 
         ///////////////////////////////////////////////////
         // Member Functions
@@ -125,6 +143,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 0, 132, _team);
                                 createVehicle(700, 229, -156, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -133, 20, _team);
@@ -136,6 +155,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 0, 132, _team);
                                 createVehicle(700, 229, -156, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -133, 20, _team);
@@ -147,6 +167,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 0, 132, _team);
                                 createVehicle(700, 229, -156, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -133, 20, _team);
@@ -158,6 +179,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 0, 132, _team);
                                 createVehicle(700, 229, -156, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -175,6 +197,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 90, 0, _team);
                                 createVehicle(700, 195, -100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, 293, 4, _team);
@@ -186,6 +209,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 90, 0, _team);
                                 createVehicle(700, 195, -100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, 293, 4, _team);
@@ -197,6 +221,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 90, 0, _team);
                                 createVehicle(700, 195, -100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, 293, 4, _team);
@@ -208,6 +233,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 90, 0, _team);
                                 createVehicle(700, 195, -100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -225,6 +251,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 208, -64, _team);
                                 createVehicle(700, -48, -32, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, 320, -32, _team);
@@ -236,6 +263,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 208, -64, _team);
                                 createVehicle(700, -48, -32, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, 320, -32, _team);
@@ -247,6 +275,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 208, -64, _team);
                                 createVehicle(700, -48, -32, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, 320, -32, _team);
@@ -258,6 +287,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 208, -64, _team);
                                 createVehicle(700, -48, -32, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -275,6 +305,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -195, -100, _team);
                                 createVehicle(700, -195, 100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -80, 0, _team);
@@ -286,6 +317,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -195, -100, _team);
                                 createVehicle(700, -195, 100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -80, 0, _team);
@@ -297,6 +329,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -195, -100, _team);
                                 createVehicle(700, -195, 100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -80, 0, _team);
@@ -308,6 +341,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -195, -100, _team);
                                 createVehicle(700, -195, 100, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -325,6 +359,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 84, _team);
                                 createVehicle(700, -91, -44, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -75, -316, _team);
@@ -336,6 +371,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 84, _team);
                                 createVehicle(700, -91, -44, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -75, -316, _team);
@@ -347,6 +383,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 84, _team);
                                 createVehicle(700, -91, -44, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -75, -316, _team);
@@ -358,6 +395,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 84, _team);
                                 createVehicle(700, -91, -44, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -375,6 +413,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 75, -50, _team);
                                 createVehicle(700, 25, 80, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -75, -25, _team);
@@ -386,6 +425,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 75, -50, _team);
                                 createVehicle(700, 25, 80, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -75, -25, _team);
@@ -397,6 +437,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 75, -50, _team);
                                 createVehicle(700, 25, 80, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -75, -25, _team);
@@ -408,6 +449,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 75, -50, _team);
                                 createVehicle(700, 25, 80, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -425,6 +467,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -155, -140, _team);
                                 createVehicle(700, -59, 52, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -107, -332, _team);
@@ -436,6 +479,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -155, -140, _team);
                                 createVehicle(700, -59, 52, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -107, -332, _team);
@@ -447,6 +491,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -155, -140, _team);
                                 createVehicle(700, -59, 52, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -107, -332, _team);
@@ -458,6 +503,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -155, -140, _team);
                                 createVehicle(700, -59, 52, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -475,6 +521,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -176, -48, _team);
                                 createVehicle(700, 128, 48, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -80, -112, _team);
@@ -486,6 +533,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -176, -48, _team);
                                 createVehicle(700, 128, 48, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -80, -112, _team);
@@ -497,6 +545,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -176, -48, _team);
                                 createVehicle(700, 128, 48, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -80, -112, _team);
@@ -508,6 +557,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -176, -48, _team);
                                 createVehicle(700, 128, 48, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -525,6 +575,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 176, 0, _team);
                                 createVehicle(700, 64, 128, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -144, 64, _team);
@@ -536,6 +587,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 176, 0, _team);
                                 createVehicle(700, 64, 128, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -144, 64, _team);
@@ -547,6 +599,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 176, 0, _team);
                                 createVehicle(700, 64, 128, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -144, 64, _team);
@@ -558,6 +611,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 176, 0, _team);
                                 createVehicle(700, 64, 128, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -575,6 +629,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -96, 400, _team);
                                 createVehicle(700, 96, 112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -96, -48, _team);
@@ -586,6 +641,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -96, 400, _team);
                                 createVehicle(700, 96, 112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -96, -48, _team);
@@ -597,6 +653,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -96, 400, _team);
                                 createVehicle(700, 96, 112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -96, -48, _team);
@@ -608,6 +665,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -96, 400, _team);
                                 createVehicle(700, 96, 112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;                        
@@ -625,6 +683,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -48, -144, _team);
                                 createVehicle(700, 48, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -96, -0, _team);
@@ -636,6 +695,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -48, -144, _team);
                                 createVehicle(700, 48, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -96, -0, _team);
@@ -647,6 +707,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -48, -144, _team);
                                 createVehicle(700, 48, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -96, -0, _team);
@@ -658,6 +719,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -48, -144, _team);
                                 createVehicle(700, 48, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -675,6 +737,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -80, 224, _team);
                                 createVehicle(700, 112, 224, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, 336, -16, _team);
@@ -686,6 +749,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -80, 224, _team);
                                 createVehicle(700, 112, 224, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, 336, -16, _team);
@@ -697,6 +761,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -80, 224, _team);
                                 createVehicle(700, 112, 224, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, 336, -16, _team);
@@ -708,6 +773,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -80, 224, _team);
                                 createVehicle(700, 112, 224, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -725,6 +791,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -20, 112, _team);
                                 createVehicle(700, -20, -112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, 112, 144, _team);
@@ -736,6 +803,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -20, 112, _team);
                                 createVehicle(700, -20, -112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, 112, 144, _team);
@@ -747,6 +815,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -20, 112, _team);
                                 createVehicle(700, -20, -112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, 112, 144, _team);
@@ -758,6 +827,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -20, 112, _team);
                                 createVehicle(700, -20, -112, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -775,6 +845,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -272, -50, _team);
                                 createVehicle(700, 256, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -384, 0, _team);
@@ -786,6 +857,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -272, -50, _team);
                                 createVehicle(700, 256, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -384, 0, _team);
@@ -797,6 +869,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -272, -50, _team);
                                 createVehicle(700, 256, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -384, 0, _team);
@@ -808,6 +881,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -272, -50, _team);
                                 createVehicle(700, 256, 144, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -825,6 +899,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 308, _team);
                                 createVehicle(700, -75, -76, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, 117, 212, _team);
@@ -836,6 +911,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 308, _team);
                                 createVehicle(700, -75, -76, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, 117, 212, _team);
@@ -847,6 +923,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 308, _team);
                                 createVehicle(700, -75, -76, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, 117, 212, _team);
@@ -858,6 +935,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, 69, 308, _team);
                                 createVehicle(700, -75, -76, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
@@ -875,6 +953,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -64, 64, _team);
                                 createVehicle(700, 352, -160, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 2://Build a rocket
                                 createVehicle(825, -96, 16, _team);
@@ -886,6 +965,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -64, 64, _team);
                                 createVehicle(700, 352, -160, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 3://Build a rocket
                                 createVehicle(825, -96, 16, _team);
@@ -897,6 +977,7 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -64, 64, _team);
                                 createVehicle(700, 352, -160, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                             case 4://Build a rocket
                                 createVehicle(825, -96, 16, _team);
@@ -908,13 +989,14 @@ namespace InfServer.Script.GameType_Eol
                                 //Build two plasma
                                 createVehicle(700, -64, 64, _team);
                                 createVehicle(700, 352, -160, _team);
+                                DrawCirclePoints(_maxwalls, 25, new pointObject(_baseScript._botlocX, _baseScript.botlocY));
                                 break;
                         }
                         break;
                    
                 }
                 #endregion
-
+                 
                 //////////////////////////////////////////////////
                 //                  Generic Base                //
                 //////////////////////////////////////////////////
@@ -980,6 +1062,7 @@ namespace InfServer.Script.GameType_Eol
         //Creates a wall of vechicles based on length and spacing given
         public void createWall(int id, int x_offset, int y_offset, int length, int xspacing, int yspacing, Team botTeam)
         {
+            id = 0;
             for (int i = 0; i < length; i++)
             {
                 createVehicle(id, x_offset + (i * xspacing), y_offset + (i * yspacing), botTeam);
@@ -998,6 +1081,20 @@ namespace InfServer.Script.GameType_Eol
 
             _arena.newVehicle(vehicle, botTeam, null, newState);
 
+        }
+
+        void DrawCirclePoints(int points, double radius, pointObject center)
+        {
+            double slice = 2 * Math.PI / points;
+            for (int i = 0; i < points; i++)
+            {
+                double angle = slice * i;
+                int newX = (int)(center.X + radius * Math.Cos(angle));
+                int newY = (int)(center.Y + radius * Math.Sin(angle));
+                pointObject p = new pointObject(xPos, yPos);
+
+                createWall(436, pointObject.getX, pointObject.getY, 10, 10, _team);
+            }
         }
 
         #region Steer Delegates

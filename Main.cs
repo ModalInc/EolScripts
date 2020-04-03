@@ -23,7 +23,7 @@ namespace InfServer.Script.GameType_Eol
         private Arena _arena;					//Pointer to our arena class
         private CfgInfo _config;				//The zone config
         private Points _points;                 //Our points
-        private Teams _tm;                       //Teams logic
+        private Teams _tm;                      //Teams logic
 
         //Headquarters
         public Headquarters _hqs;               //Our headquarter tracker
@@ -60,10 +60,13 @@ namespace InfServer.Script.GameType_Eol
         private int _lastFlagCheck;
         private bool _gameWon = false;
 
+        //Flag Checks for roaming captains
+        public List<Arena.FlagState> _flags;
+
         //Settings
         private int _pointSmallChange;                  //The small change to # of points (ex: kills, turret kills, etc)
         private int _pointPeriodicChange;               //The change to # of points based on periodic flag rewards
-
+        private int _randomcheck;                       //The randomly selected number that allows roaming captains to respawn at.
         public int _pylonLocation;
 
         //Scores
@@ -116,13 +119,17 @@ namespace InfServer.Script.GameType_Eol
 
         //Bots
         private int _lastBotCheck;
+        private int[] _coolArray;
         public const int _pylonVehID = 622;
+
+        public int _botlocX;
+        public int _botlocY;
 
         public class pylonObject
         {
-            short x;      //X coordinate of pylon
-            short y;      //Y coordinate of pylon
-            bool exists;//Tells us if the pylon exists on the map
+            short x;        //X coordinate of pylon
+            short y;        //Y coordinate of pylon
+            bool exists;    //Tells us if the pylon exists on the map
 
             public pylonObject(short xPos, short yPos)
             {
@@ -153,7 +160,7 @@ namespace InfServer.Script.GameType_Eol
 
         //Bots
         //Perimeter defense Bots
-        public const float c_defenseInitialAmountPP = 0.8f;		//The amount of defense bots per player initially spawned (minimum of 1)
+        public const float c_defenseInitialAmountPP = 2.5f;		//The amount of defense bots per player initially spawned (minimum of 1)
         public const int c_defenseAddTimerGrowth = 18;			//The amount of seconds to add to the new bot timer for each person missing from the team
         public const int c_defenseAddTimer = 36;			    //The amount of seconds between allowing new defense bots
         public const int c_defenseRespawnTimeGrowth = 400;		//The amount of time to add to the respawn timer for each missing player
@@ -163,35 +170,56 @@ namespace InfServer.Script.GameType_Eol
         public const int c_defenseMaxPath = 350;				//The maximum path length before a bot will request a respawn
         public const int c_defensePathUpdateInterval = 1000;	//The amount of ticks before a bot will renew it's path
         public const int c_defenseDistanceLeeway = 500;			//The maximum distance leeway a bot can be from the team before it is respawned
-        public const int _checkCaptain = 6000;                  //The tick at which we check for a captain  50000
-        public const int _checkEngineer = 7500;                 //The tick at which we check for an engineer 70000
-        protected int _tickLastEngineer = 0;                        //Last time we checked for an engineer
-        protected int _tickLastCaptain = 0;                         //Last time we checked for a captain
-        protected int _lastPylonCheck = 0;                          //Last time we check for bot pylons to build hq's at.
+        public const int _checkCaptain = 50000;                 //The tick at which we check for a captain  50000
+        public const int _checkEngineer = 70000;                //The tick at which we check for an engineer 70000
+        public const int _checkRoamingCaptain = 82000;          //The tick at which we check for a captain  82000
+        protected int _tickLastEngineer = 0;                    //Last time we checked for an engineer
+        protected int _tickLastCaptain = 0;                     //Last time we checked for a captain
+        protected int _tickLastRoamingCaptain = 0;              //Last time we checked for a roaming captain
+        protected int _lastPylonCheck = 0;                      //Last time we check for bot pylons to build hq's at.
 
         public const int c_CaptainPathUpdateInterval = 5000;	//The amount of ticks before an engineer's combat bot updates it's path
 
         public Dictionary<Team, int> botCount;
         public Dictionary<Team, int> captainBots;
+        public Dictionary<Team, int> roamBots;
+        public List<Team> roamingCaptianBots;
         public List<Team> engineerBots;
 
         public List<Bot> _bots;
         public List<Bot> _condemnedBots;
 
         public int _maxEngineers;                               //Maximum amount of engineer bots that will spawn in game
+        public int _maxRoamCaptains;                            //Maximum amount of roaming captain bots that will spawn in game
+        public int _maxRoamingBots;
+        public int _maxDefenseBots;
         public int _currentEngineers = 0;                       //Current amount of engineer bots playing in the game
+        public int _currentRoamCaptains = 0;
         public int[] _lastPylon;                                //Array of all pylons that are being used
 
         //Bot teams
         public Team botTeam1;
         public Team botTeam2;
         public Team botTeam3;
+        public Team botTeam4;
+        public Team botTeam5;
+        public Team botTeam6;
 
         public string botTeamName1 = "Bot Team - Titan Rebels";
         public string botTeamName2 = "Bot Team - Deeks Bandits";
         public string botTeamName3 = "Bot Team - NewJack Raiders";
+        public string botTeamName4 = "Bot Team - Eta";
+        public string botTeamName5 = "Bot Team - Theta";
+        public string botTeamName6 = "Bot Team - Iota";
 
         Random _rand;
+
+        public int _playerWarpRadius = 760;
+        private int _engagedRadius = 1000;
+        private int _maxEnemyRange = 2200;
+        private int _flankerLogic = 3;
+        private short _enemyBuffer = 1800;
+        public Dictionary<string, Helpers.ObjectState> _lastSpawn;
 
 
 
@@ -234,10 +262,13 @@ namespace InfServer.Script.GameType_Eol
             _hqs.LevelModify += onHQLevelModify;
 
             //Handle bots
-            captainBots = new Dictionary<Team, int>(); //Keeps track of captain bots
+            captainBots = new Dictionary<Team, int>();  //Keeps track of captain bots
             botCount = new Dictionary<Team, int>(); //Counts of all defense bots and their teams
+            roamBots = new Dictionary<Team, int>();
             engineerBots = new List<Team>();
-            _currentEngineers = 0;  //The number of engineers currently alive
+            roamingCaptianBots = new List<Team>();
+            _currentEngineers = 0;                      //The number of engineers currently alive
+            _currentRoamCaptains = 0;                   //The number of roaming captains currently alive
             if (_bots == null)
                 _bots = new List<Bot>();
 
@@ -264,9 +295,33 @@ namespace InfServer.Script.GameType_Eol
             botTeam3._owner = null;
             botTeam3._isPrivate = true;
 
+            botTeam4 = new Team(_arena, _arena._server);
+            botTeam4._name = botTeamName4;
+            botTeam4._id = (short)_arena.Teams.Count();
+            botTeam4._password = "jojotheClown";
+            botTeam4._owner = null;
+            botTeam4._isPrivate = true;
+
+            botTeam5 = new Team(_arena, _arena._server);
+            botTeam5._name = botTeamName5;
+            botTeam5._id = (short)_arena.Teams.Count();
+            botTeam5._password = "jojotheClown";
+            botTeam5._owner = null;
+            botTeam5._isPrivate = true;
+
+            botTeam6 = new Team(_arena, _arena._server);
+            botTeam6._name = botTeamName6;
+            botTeam6._id = (short)_arena.Teams.Count();
+            botTeam6._password = "jojotheClown";
+            botTeam6._owner = null;
+            botTeam6._isPrivate = true;
+
             _arena.createTeam(botTeam1);
             _arena.createTeam(botTeam2);
             _arena.createTeam(botTeam3);
+            _arena.createTeam(botTeam4);
+            _arena.createTeam(botTeam5);
+            _arena.createTeam(botTeam6);
 
             _pylons = new Dictionary<int, pylonObject>();
             _pylons.Add(0, new pylonObject(512, 480)); // Sector A
@@ -410,12 +465,28 @@ namespace InfServer.Script.GameType_Eol
                     _lastFlagCheck = now;
                 }
             }
-            if (playing < 2) //30
-            { _maxEngineers = 1; }
-            if (playing >= 2 && playing < 60) //30
-            { _maxEngineers = 2; }
+            if (playing < 30) //30
+            {   
+                _maxEngineers = 1;
+                _maxRoamCaptains = 1;
+                _maxRoamingBots = 10;
+                _maxDefenseBots = 6;
+            }
+            if (playing >= 30 && playing < 60) //30
+            {   
+                _maxEngineers = 2;
+                _maxRoamCaptains = 2;
+                _maxRoamingBots = 20;
+                _maxDefenseBots = 7;
+            }
             if (playing > 60)
-            { _maxEngineers = 3; }
+            {   
+                _maxEngineers = 3;
+                _maxRoamCaptains = 3;
+                _maxRoamingBots = 30;
+                _maxDefenseBots = 8;
+            }
+
 
             if (_arena._bGameRunning && playing == 0) { _arena.gameEnd(); }
 
@@ -428,7 +499,7 @@ namespace InfServer.Script.GameType_Eol
                 _lastPylonCheck = now;
             }
             //if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
-            if (now - _tickEolGameStart > 360000 && _eol._gameBegun == true)
+            if (now - _tickEolGameStart > 216000000000 && _eol._gameBegun == true) //test 360000
             {
                 if (_activeCrowns.Count == 0)
                 {
@@ -479,62 +550,7 @@ namespace InfServer.Script.GameType_Eol
                     }
                 }
                 _lastHQReward = now;
-            }
-
-            if (playing < 2 && _gameBegun)
-            {
-                if(_eol.sectUnder60 == null)
-                {
-                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); //30
-                }
-                if(_eol.sectUnder60 != null)
-                {
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                }
-             }
-            
-            if (playing >= 2 && playing < 60 && _gameBegun) //30
-            {
-                if (_eol.sectUnder60 != null)
-                {
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                }
-                if (_eol.sectUnder60 == null) { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
-            }
-            if (playing > 60 && _gameBegun)
-            {
-                if (_eol.sectUnder30 == "All Sectors") { _arena.setTicker(1, 3, 0, "All Sectors are currently open with low radiation levels"); }
-                if (_eol.sectUnder30 != "All Sectors") { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
+                
             }
 
 
@@ -589,8 +605,17 @@ namespace InfServer.Script.GameType_Eol
                     updateTickers();
                     UpdateCTFTickers();
                     UpdateKillStreaks();
+                    UpdateZoneTickers();
                     _tickGameLastTickerUpdate = now;
                 }
+            }
+
+            if (_tickGameStart > 82000 && playing >= 1)
+            {
+                _coolArray = new int[] { 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000, 80000 };
+                Random r = new Random();
+                int _randomIndex = r.Next(0,_coolArray.Length);
+                _randomcheck = _coolArray[_randomIndex];
             }
 
             //Do we have enough players to start a game of KOTH?
@@ -786,37 +811,69 @@ namespace InfServer.Script.GameType_Eol
 
                                 if (home._state.positionX == 512 && home._state.positionY == 480)
                                     _pylonLocation = 1;
+                                    _botlocX = home._state.positionX;
+                                    _botlocY = home._state.positionY;
                                 if (home._state.positionX == 2736 && home._state.positionY == 5600)
                                     _pylonLocation = 2;
+                                    _botlocX = home._state.positionX;
+                                    _botlocY = home._state.positionY;
                                 if (home._state.positionX == 4901 && home._state.positionY == 4740)
                                     _pylonLocation = 3;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 7445 && home._state.positionY == 2356)
                                     _pylonLocation = 4;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 5504 && home._state.positionY == 7040)
                                     _pylonLocation = 5;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 8304 && home._state.positionY == 11008)
                                     _pylonLocation = 6;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 6784 && home._state.positionY == 13808)
                                     _pylonLocation = 7;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 4117 && home._state.positionY == 9956)
                                     _pylonLocation = 8;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 13765 && home._state.positionY == 1236)
                                     _pylonLocation = 9;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 17093 && home._state.positionY == 5076)
                                     _pylonLocation = 10;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 12565 && home._state.positionY == 5252)
                                     _pylonLocation = 11;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 18117 && home._state.positionY == 3316)
                                     _pylonLocation = 12;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 20661 && home._state.positionY == 7924)
                                     _pylonLocation = 13;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 16981 && home._state.positionY == 10580)
                                     _pylonLocation = 14;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 18064 && home._state.positionY == 7584)
                                     _pylonLocation = 15;
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
                                 if (home._state.positionX == 11957 && home._state.positionY == 13604)
                                     _pylonLocation = 16;
-                                
+                                _botlocX = home._state.positionX;
+                                _botlocY = home._state.positionY;
+
                                 //Destroy our pylon because we will use our hq to respawn and we dont want any other engineers grabbing this one
                                 home.destroy(false);
 
@@ -850,8 +907,97 @@ namespace InfServer.Script.GameType_Eol
                 }
                 _tickLastEngineer = now;
             }
+
+            if (now - _tickLastRoamingCaptain > _checkRoamingCaptain && _gameBegun == true)
+            {
+                if (_currentRoamCaptains < _maxRoamCaptains)
+                {//They don't have a captain
+                    if (_bots == null)
+                        _bots = new List<Bot>();
+                    int id = 0;
+
+                    Helpers.ObjectState warpPoint = null;
+                    List<Arena.FlagState> sortedFlags = new List<Arena.FlagState>();
+
+                    Helpers.ObjectState openPoint = null;
+
+                    sortedFlags = _arena._flags.Values.ToList();
+
+                    int count = sortedFlags.Count;
+
+                    //No flags for some reason?
+                    if (count == 0)
+                    { return false; }
+                    else
+                    {
+                        Random rand = new Random();
+
+                        for (int i = 0; i < count; i++)
+                        {
+                            int index = 0;
+
+                            Random r = new Random();
+                            int _randFlag = r.Next(0, sortedFlags.Count);
+                            index = _coolArray[_randFlag];
+
+                            warpPoint = new Helpers.ObjectState();
+                            warpPoint.positionX = sortedFlags[index].posX;
+                            warpPoint.positionY = sortedFlags[index].posY;
+
+                            openPoint = new Helpers.ObjectState();
+
+
+                            int spawnPos = 0;
+
+                            Random rn = new Random();
+                            int _randPos = rn.Next(0, 4);
+                            spawnPos = _randPos;
+
+                            short randomoffset = (short)(rand.Next(0, 800));
+
+                            switch (spawnPos)
+                            {
+                                case 1:
+                                    warpPoint.positionX = (short)(warpPoint.positionX - randomoffset);
+                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionX, warpPoint.positionY, 1200);
+                                    break;
+                                case 2:
+                                    warpPoint.positionX = (short)(warpPoint.positionX + randomoffset);
+                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionX, warpPoint.positionY, 1200);
+                                    break;
+                                case 3:
+                                    warpPoint.positionY = (short)(warpPoint.positionY - randomoffset);
+                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionY, warpPoint.positionY, 1200);
+                                    break;
+                                case 4:
+                                    warpPoint.positionY = (short)(warpPoint.positionY + randomoffset);
+                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionY, warpPoint.positionY, 1200);
+                                    break;
+                            }
+                        }
+                    }
+
+                Team team = null;
+                _arena.sendArenaMessage("A new engineer has been deployed to from Pioneer Station.");
+                if (_hqs[botTeam4] == null)
+                    team = botTeam4;
+                else if (_hqs[botTeam5] == null)
+                    team = botTeam5;
+                else if (_hqs[botTeam6] == null)
+                        team = botTeam6;
+
+                RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)464, team, null, warpPoint, this) as RoamingCaptain;
+                _bots.Add(Flagger);
+                _currentRoamCaptains++;
+                roamingCaptianBots.Add(team);
+                    roamBots.Add(team, 0);
+                }
+                _tickLastRoamingCaptain = now;
+            }
             return true;
         }
+
+
 
         #region Change Sectors
 
@@ -914,11 +1060,37 @@ namespace InfServer.Script.GameType_Eol
             }
         }
 
+        public void addBotRoam(Player owner, Helpers.ObjectState state, Team team)
+        {
+            if (_bots == null)
+                _bots = new List<Bot>();
+
+            int id = 0;
+            if (owner == null)
+            {//This is a bot team
+                //int r = _rand.Next(0, 4);
+                //Find out what bot team this is
+                switch (roamBots[team])
+                {
+                    case 1: id = 143; break; //Bot team 4
+                    case 2: id = 140; break; //Bot team 5
+                    case 3: id = 141; break; //Bot team 6
+                }
+                //Spawn a random bot in their faction
+                if (botCount.ContainsKey(team))
+                    botCount[team]++;
+                else
+                    botCount.Add(team, 0);
+                RoamingAttacker dBot = _arena.newBot(typeof(RoamingAttacker), (ushort)id, team, null, state, this, null) as RoamingAttacker;
+                _bots.Add(dBot);
+            }
+        }
+
         public void addPylons()
         {
             int playing = _arena.PlayersIngame.Count();
             _usedpylons = new Dictionary<int, pylonObject>();
-            if (playing < 2) //30
+            if (playing < 30) //30
             {
                 _currentSector1 = _eol.sectUnder30;
                 switch (_currentSector1)
@@ -969,7 +1141,7 @@ namespace InfServer.Script.GameType_Eol
                     _bpylonsSpawned = true;
                 }
             }
-            if (playing >= 2 && playing < 60) //30
+            if (playing >= 30 && playing < 60) //30
             {
                 _currentSector1 = _eol.sectUnder30;
                 _currentSector2 = _eol.sectUnder60;
@@ -1405,6 +1577,58 @@ namespace InfServer.Script.GameType_Eol
             return warpPoint;
         }
 
+        public Helpers.ObjectState findFlagWarp(Team team, bool bBot)
+        {
+            Helpers.ObjectState warpPoint = null;
+            List<Arena.FlagState> sortedFlags = new List<Arena.FlagState>();
+
+            if (!team._name.Contains("Bot Team -"))
+                sortedFlags = _arena._flags.Values.ToList();
+
+            int count = sortedFlags.Count;
+
+            //No flags for some reason?
+            if (count == 0)
+                return null;
+
+            int index = 0;
+
+            Random r = new Random();
+            int _randFlag = r.Next(0, sortedFlags.Count);
+            index = _coolArray[_randFlag];
+
+            warpPoint = new Helpers.ObjectState();
+            warpPoint.positionX = sortedFlags[index].posX;
+            warpPoint.positionY = sortedFlags[index].posY;
+
+            short _randomDist = 0;
+            Random rn = new Random();
+            int _randomNo = rn.Next(50, 450);
+            _randomDist = Convert.ToInt16(_randomNo);
+
+            int spawnPos = 0;
+
+            Random rnd = new Random();
+            int _randPos = rnd.Next(0, 4);
+            spawnPos = _randPos;
+
+            switch (spawnPos)
+            {
+                case 1: warpPoint.positionX = (short)(warpPoint.positionX - _randomDist);
+                    break;
+                case 2: warpPoint.positionX = (short)(warpPoint.positionX + _randomDist);
+                    break;
+                case 3: warpPoint.positionY = (short)(warpPoint.positionY - _randomDist);
+                    break;
+                case 4: warpPoint.positionY = (short)(warpPoint.positionY + _randomDist);
+                    break;
+            }
+
+
+            return warpPoint;
+        }
+
+
         public void warp(Player player, Helpers.ObjectState warpTo)
         {
             player.warp(warpTo.positionX, warpTo.positionY);
@@ -1424,7 +1648,7 @@ namespace InfServer.Script.GameType_Eol
                 _arena.sendArenaMessage("&Headquarters - " + team._name + " HQ has reached the max level of " + _hqlevels.Count() + "!");
         }
 
-        #region Killstreak Updaters
+        #region Tickers and Updaters
         private void UpdateCTFTickers()
         {
             int playing = _arena.PlayerCount;
@@ -1478,6 +1702,67 @@ namespace InfServer.Script.GameType_Eol
 
                 if (Environment.TickCount - p.Value.lastUsedWepTick <= 0)
                     ResetWeaponTicker(p.Key);
+            }
+        }
+
+        private void UpdateZoneTickers()
+        {
+            int playing = _arena.PlayerCount;
+
+            if (playing < 2 && _gameBegun == true)
+            {
+                if (_eol.sectUnder60 == null)
+                {
+                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); //30
+                }
+                if (_eol.sectUnder60 != null)
+                {
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                }
+            }
+
+            if (playing >= 30 && playing < 60 && _gameBegun == true) //30
+            {
+                if (_eol.sectUnder60 != null)
+                {
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                }
+                if (_eol.sectUnder60 == null) { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
+            }
+            if (playing > 60 && _gameBegun == true)
+            {
+                if (_eol.sectUnder30 == "All Sectors") { _arena.setTicker(1, 3, 0, "All Sectors are currently open with low radiation levels"); }
+                if (_eol.sectUnder30 != "All Sectors") { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
             }
         }
 
@@ -1639,6 +1924,8 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStarting = 0;
             _tickKothGameStart = 0;
             _tickKOTHGameStarting = 0;
+            _maxRoamCaptains = 0;
+            _maxEngineers = 0;
             //_tickLastEngineer = 0;
             //_tickLastCaptain = 0;
             //_lastPylonCheck = 0;
@@ -1647,6 +1934,8 @@ namespace InfServer.Script.GameType_Eol
             _tickEolGameStart = 0;
             _gameBegun = false;
             _bbetweengames = true;
+			//_eol.sectUnder30 = "";
+			//_eol.sectUnder60 = "";
             foreach (Vehicle v in _arena.Vehicles)
                 if (v._type.Type == VehInfo.Types.Computer)
                     //Destroy it!
@@ -1656,7 +1945,7 @@ namespace InfServer.Script.GameType_Eol
                 _condemnedBots.Add(bot);
 
             foreach (Bot bot in _condemnedBots)
-                bot.destroy(false);
+                bot.destroy(true);
 
             _condemnedBots.Clear();
             _bots.Clear();
@@ -1675,6 +1964,10 @@ namespace InfServer.Script.GameType_Eol
             _tickEolGameStart = 0;
             _tickKothGameStart = 0;
             _tickKOTHGameStarting = 0;
+            _maxRoamCaptains = 0;
+            _maxEngineers = 0;
+            //_eol.sectUnder30 = "";
+            //_eol.sectUnder60 = "";
             //_tickLastEngineer = 0;
             //_tickLastCaptain = 0;
             //_lastPylonCheck = 0;
@@ -1694,7 +1987,7 @@ namespace InfServer.Script.GameType_Eol
                 _condemnedBots.Add(bot);
 
             foreach (Bot bot in _condemnedBots)
-                bot.destroy(false);
+                bot.destroy(true);
 
             _condemnedBots.Clear();
             _bots.Clear();

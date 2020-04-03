@@ -23,8 +23,7 @@ namespace InfServer.Script.GameType_Eol
         // Member variables
         ///////////////////////////////////////////////////
         public Player owner;					//The headquarters we defend
-        private Player targetEnemy;             //The enemy that is by our HQ
-        private Vehicle vHq;                    //Our HQ
+        private Player targetEnemy;             //The enemy that needs attacking
         private int _stalkRadius = 500;
 
         private Random _rand = new Random(System.Environment.TickCount);
@@ -82,6 +81,14 @@ namespace InfServer.Script.GameType_Eol
 
                 _tickLastCollision = now;
                 return base.poll();
+            }
+
+            if (eol.roamingCaptianBots(_team) == null)
+            {
+                kill(null);
+                bCondemned = true;
+                _baseScript.captainBots.Remove(_team);
+                return false;
             }
 
             //Find out of we are suppose to be attacking anyone
