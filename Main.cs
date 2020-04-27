@@ -29,6 +29,7 @@ namespace InfServer.Script.GameType_Eol
         public Headquarters _hqs;               //Our headquarter tracker
         private int[] _hqlevels;                //Bounty required to level up HQs
         public int _hqVehId;                    //The vehicle ID of our HQs
+        public int _roamCaptains;
         private int _baseXPReward;              //Base XP reward for HQs
         private int _baseCashReward;            //Base Cash reward for HQs
         private int _basePointReward;           //Base Point reward for HQs
@@ -44,11 +45,12 @@ namespace InfServer.Script.GameType_Eol
         private Team _victoryKothTeam;			//The team currently winning!
         private int _tickGameLastTickerUpdate;  //The tick at which the ticker was last updated
         private int _tickGameStarting;			//The tick at which the game began starting (0 == not initiated)
-        private int _tickKOTHGameStarting;
-        private int _tickGameStart;				//The tick at which the game started (0 == stopped)
+        private long _tickKOTHGameStarting;
+        private long _tickGameStart;				//The tick at which the game started (0 == stopped)
         private int _tickEolGameStart;
         private int _tickKothGameStart;
         private int _minPlayers;                //The minimum amount of players needed for a KOTH game
+        private long _KothGameCheck;
 
         //CTF
         private int _jackpot;					//The game's jackpot so far
@@ -68,6 +70,10 @@ namespace InfServer.Script.GameType_Eol
         private int _pointPeriodicChange;               //The change to # of points based on periodic flag rewards
         private int _randomcheck;                       //The randomly selected number that allows roaming captains to respawn at.
         public int _pylonLocation;
+        public int _minX;
+        public int _maxX;
+        public int _minY;
+        public int _maxY;
 
         //Scores
         private Dictionary<Player, int> _healingDone;   //Keep track of healing done by players
@@ -121,6 +127,7 @@ namespace InfServer.Script.GameType_Eol
         private int _lastBotCheck;
         private int[] _coolArray;
         public const int _pylonVehID = 622;
+        int _flagchecking = 82000;
 
         public int _botlocX;
         public int _botlocY;
@@ -146,7 +153,7 @@ namespace InfServer.Script.GameType_Eol
             public void setExists(bool bExists)
             { exists = bExists; }
         }
-        
+
         public Dictionary<int, pylonObject> _usedpylons;
         public Dictionary<int, pylonObject> _pylons;
         public Dictionary<int, pylonObject> _pylonsA;
@@ -169,20 +176,23 @@ namespace InfServer.Script.GameType_Eol
         public const int c_defenseMaxRespawnDist = 1500;		//The maximum distance bot can be spawned from the players
         public const int c_defenseMaxPath = 350;				//The maximum path length before a bot will request a respawn
         public const int c_defensePathUpdateInterval = 1000;	//The amount of ticks before a bot will renew it's path
+        public const int c_defenseRoamPathUpdateInterval = 1000;
         public const int c_defenseDistanceLeeway = 500;			//The maximum distance leeway a bot can be from the team before it is respawned
         public const int _checkCaptain = 50000;                 //The tick at which we check for a captain  50000
         public const int _checkEngineer = 70000;                //The tick at which we check for an engineer 70000
-        public const int _checkRoamingCaptain = 82000;          //The tick at which we check for a captain  82000
+        public const int _checkRoamingCaptain = 70000;          //The tick at which we check for a roaming captain  82000
         protected int _tickLastEngineer = 0;                    //Last time we checked for an engineer
         protected int _tickLastCaptain = 0;                     //Last time we checked for a captain
         protected int _tickLastRoamingCaptain = 0;              //Last time we checked for a roaming captain
         protected int _lastPylonCheck = 0;                      //Last time we check for bot pylons to build hq's at.
 
         public const int c_CaptainPathUpdateInterval = 5000;	//The amount of ticks before an engineer's combat bot updates it's path
+        public const int c_CaptainRoamPathUpdateInterval = 3000;	//The amount of ticks before a roaming bot looks to it's captain and updates it's path
 
         public Dictionary<Team, int> botCount;
         public Dictionary<Team, int> captainBots;
         public Dictionary<Team, int> roamBots;
+        public Dictionary<Team, int> capRoamBots;
         public List<Team> roamingCaptianBots;
         public List<Team> engineerBots;
 
@@ -193,6 +203,8 @@ namespace InfServer.Script.GameType_Eol
         public int _maxRoamCaptains;                            //Maximum amount of roaming captain bots that will spawn in game
         public int _maxRoamingBots;
         public int _maxDefenseBots;
+        public int _maxDefPerTeam;
+        public int _maxRoamPerTeam;
         public int _currentEngineers = 0;                       //Current amount of engineer bots playing in the game
         public int _currentRoamCaptains = 0;
         public int[] _lastPylon;                                //Array of all pylons that are being used
@@ -214,11 +226,6 @@ namespace InfServer.Script.GameType_Eol
 
         Random _rand;
 
-        public int _playerWarpRadius = 760;
-        private int _engagedRadius = 1000;
-        private int _maxEnemyRange = 2200;
-        private int _flankerLogic = 3;
-        private short _enemyBuffer = 1800;
         public Dictionary<string, Helpers.ObjectState> _lastSpawn;
 
 
@@ -238,6 +245,7 @@ namespace InfServer.Script.GameType_Eol
             //Load up our gametype handlers
             _eol = new EolBoundaries(_arena, this);
             _tm = new Teams(_arena, this);
+            _KothGameCheck = 432000000000;
             //Load up Pylons
             _bpylonsSpawned = false;
             foreach (Arena.FlagState fs in _arena._flags.Values)
@@ -262,9 +270,11 @@ namespace InfServer.Script.GameType_Eol
             _hqs.LevelModify += onHQLevelModify;
 
             //Handle bots
+            _roamCaptains = 142;
             captainBots = new Dictionary<Team, int>();  //Keeps track of captain bots
             botCount = new Dictionary<Team, int>(); //Counts of all defense bots and their teams
             roamBots = new Dictionary<Team, int>();
+            capRoamBots = new Dictionary<Team, int>();
             engineerBots = new List<Team>();
             roamingCaptianBots = new List<Team>();
             _currentEngineers = 0;                      //The number of engineers currently alive
@@ -322,6 +332,7 @@ namespace InfServer.Script.GameType_Eol
             _arena.createTeam(botTeam4);
             _arena.createTeam(botTeam5);
             _arena.createTeam(botTeam6);
+
 
             _pylons = new Dictionary<int, pylonObject>();
             _pylons.Add(0, new pylonObject(512, 480)); // Sector A
@@ -422,18 +433,19 @@ namespace InfServer.Script.GameType_Eol
             {
                 _eol.Poll(now);
             }
-
-            //Do we have enough people to start a game of KOTH?
+                //Do we have enough people to start a game of KOTH?
             if (now - _lastGameCheck <= Arena.gameCheckInterval)
                 return true;
             _lastGameCheck = now;
 
-            if ((_tickGameStart == 0 || _tickGameStarting == 0) && playing < 1)
+            if (_arena._bGameRunning && playing < 1)
             {   //Stop the game!
                 _arena.setTicker(1, 1, 0, "Not Enough Players, Join to start game");
+                //Stop the game
+                _arena.gameEnd();
             }
             //Do we have enough players to start a game?
-            else if (_tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
+            else if (!_arena._bGameRunning && _tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
             {	//Great! Get going
                 _tickGameStarting = now;
                 _arena.setTicker(1, 1, 15 * 100, "Next game: ",
@@ -471,24 +483,28 @@ namespace InfServer.Script.GameType_Eol
                 _maxRoamCaptains = 1;
                 _maxRoamingBots = 10;
                 _maxDefenseBots = 6;
+                _maxDefPerTeam = 6;
+                _maxRoamPerTeam = 10;
             }
             if (playing >= 30 && playing < 60) //30
             {   
                 _maxEngineers = 2;
                 _maxRoamCaptains = 2;
                 _maxRoamingBots = 20;
-                _maxDefenseBots = 7;
+                _maxDefenseBots = 16;
+                _maxDefPerTeam = 8;
+                _maxRoamPerTeam = 10;
             }
-            if (playing > 60)
+            if (playing >= 60)
             {   
                 _maxEngineers = 3;
                 _maxRoamCaptains = 3;
                 _maxRoamingBots = 30;
-                _maxDefenseBots = 8;
+                _maxDefenseBots = 30;
+                _maxDefPerTeam = 10;
+                _maxRoamPerTeam = 10;
             }
 
-
-            if (_arena._bGameRunning && playing == 0) { _arena.gameEnd(); }
 
             if ((now - _lastPylonCheck >= 36000000) && _gameBegun == true) //36000000
             {
@@ -499,11 +515,17 @@ namespace InfServer.Script.GameType_Eol
                 _lastPylonCheck = now;
             }
             //if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
-            if (now - _tickEolGameStart > 216000000000 && _eol._gameBegun == true) //test 360000
+
+            if (now - _tickEolGameStart > _KothGameCheck && _eol._gameBegun == true) //test 360000
             {
                 if (_activeCrowns.Count == 0)
                 {
                     preNewSector();
+                }
+                else
+                {
+                    //If KOTH game ongoing then delay resetting of check.
+                    _KothGameCheck = 360000;
                 }
                 _tickEolGameStart = now;
             }
@@ -589,7 +611,7 @@ namespace InfServer.Script.GameType_Eol
                     kothVictory(_victoryKothTeam);
                     return true;
                 }
-                else if (_activeCrowns.Count == 0)
+                else if (_activeCrowns.Count == 0 && _tickKOTHGameStarting != 0)
                 {//There was a tie
                     _arena.sendArenaMessage("There was no KOTH winner");
                     resetKOTH();
@@ -598,25 +620,19 @@ namespace InfServer.Script.GameType_Eol
             }
 
             //Update our tickers
-            if (_tickGameStart > 2000)
+            if (now - _tickGameLastTickerUpdate > 500)
             {
-                if (now - _tickGameLastTickerUpdate > 1000)
-                {
-                    updateTickers();
-                    UpdateCTFTickers();
-                    UpdateKillStreaks();
-                    UpdateZoneTickers();
-                    _tickGameLastTickerUpdate = now;
-                }
+                updateTickers();
+                UpdateCTFTickers();
+                UpdateKillStreaks();
+                UpdateZoneTickers();
+                _tickGameLastTickerUpdate = now;
             }
 
-            if (_tickGameStart > 82000 && playing >= 1)
+            /*if (_tickGameStart > 2000)
             {
-                _coolArray = new int[] { 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000, 80000 };
-                Random r = new Random();
-                int _randomIndex = r.Next(0,_coolArray.Length);
-                _randomcheck = _coolArray[_randomIndex];
-            }
+                getRoamCaptTime();
+            }*/
 
             //Do we have enough players to start a game of KOTH?
             if ((_tickKothGameStart == 0 || _tickKOTHGameStarting == 0) && playing < 10)
@@ -733,6 +749,7 @@ namespace InfServer.Script.GameType_Eol
                                 if (_currentSector1 == "Sector C")
                                 {
                                     pylons = _arena.getVehiclesInArea(8736, 1, 22064, 6320).Where(v => v._type.Id == _pylonVehID);
+
                                 }
                                 if (_currentSector1 == "Sector D")
                                 {
@@ -915,82 +932,112 @@ namespace InfServer.Script.GameType_Eol
                     if (_bots == null)
                         _bots = new List<Bot>();
                     int id = 0;
-
+                    
                     Helpers.ObjectState warpPoint = null;
                     List<Arena.FlagState> sortedFlags = new List<Arena.FlagState>();
 
                     Helpers.ObjectState openPoint = null;
-
-                    sortedFlags = _arena._flags.Values.ToList();
+                    
+                    sortedFlags = _arena._flags.Values.Where(f => f.posX >= _minX && f.posX <= _maxX && f.posY >= _minY && f.posY <= _maxY).ToList();
 
                     int count = sortedFlags.Count;
 
                     //No flags for some reason?
-                    if (count == 0)
+                    if (sortedFlags.Count == 0 || _arena._flags == null || _arena._flags.Count == 0)
                     { return false; }
                     else
                     {
                         Random rand = new Random();
 
-                        for (int i = 0; i < count; i++)
+                        int index = 0;
+
+                        Random r = new Random();
+                        int _randFlag = r.Next(0, sortedFlags.Count);
+                        index = _randFlag;
+
+                        warpPoint = new Helpers.ObjectState();
+                        warpPoint.positionX = sortedFlags[index].posX;
+                        warpPoint.positionY = sortedFlags[index].posY;
+
+                        openPoint = new Helpers.ObjectState();
+
+
+                        int spawnPos = 0;
+
+                        Random rn = new Random();
+                        int _randPos = rn.Next(0, 4);
+                        spawnPos = _randPos;
+
+                        short randomoffset = (short)(rand.Next(100, 800));
+
+                        switch (spawnPos)
                         {
-                            int index = 0;
-
-                            Random r = new Random();
-                            int _randFlag = r.Next(0, sortedFlags.Count);
-                            index = _coolArray[_randFlag];
-
-                            warpPoint = new Helpers.ObjectState();
-                            warpPoint.positionX = sortedFlags[index].posX;
-                            warpPoint.positionY = sortedFlags[index].posY;
-
-                            openPoint = new Helpers.ObjectState();
-
-
-                            int spawnPos = 0;
-
-                            Random rn = new Random();
-                            int _randPos = rn.Next(0, 4);
-                            spawnPos = _randPos;
-
-                            short randomoffset = (short)(rand.Next(0, 800));
-
-                            switch (spawnPos)
-                            {
-                                case 1:
-                                    warpPoint.positionX = (short)(warpPoint.positionX - randomoffset);
-                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionX, warpPoint.positionY, 1200);
-                                    break;
-                                case 2:
-                                    warpPoint.positionX = (short)(warpPoint.positionX + randomoffset);
-                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionX, warpPoint.positionY, 1200);
-                                    break;
-                                case 3:
-                                    warpPoint.positionY = (short)(warpPoint.positionY - randomoffset);
-                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionY, warpPoint.positionY, 1200);
-                                    break;
-                                case 4:
-                                    warpPoint.positionY = (short)(warpPoint.positionY + randomoffset);
-                                    //openPoint = findOpenWarp(_team, _arena, warpPoint.positionY, warpPoint.positionY, 1200);
-                                    break;
-                            }
+                            case 1:
+                                warpPoint.positionX = (short)(warpPoint.positionX - randomoffset);
+                                openPoint = findOpenWarpBot( _arena, warpPoint.positionX, warpPoint.positionY, 30);
+                                break;
+                            case 2:
+                                warpPoint.positionX = (short)(warpPoint.positionX + randomoffset);
+                                openPoint = findOpenWarpBot( _arena, warpPoint.positionX, warpPoint.positionY, 30);
+                                break;
+                            case 3:
+                                warpPoint.positionY = (short)(warpPoint.positionY - randomoffset);
+                                openPoint = findOpenWarpBot( _arena, warpPoint.positionY, warpPoint.positionY, 30);
+                                break;
+                            case 4:
+                                warpPoint.positionY = (short)(warpPoint.positionY + randomoffset);
+                                openPoint = findOpenWarpBot(_arena, warpPoint.positionY, warpPoint.positionY, 30);
+                                break;
                         }
+
+
+                        Team team = null;
+                        if (!capRoamBots.ContainsKey(botTeam4) && _maxRoamCaptains == 1)
+                        {
+                            team = botTeam4;
+                            _arena.sendArenaMessage("A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
+                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
+                            _bots.Add(Flagger);
+                            _currentRoamCaptains++;
+                            roamingCaptianBots.Add(team);
+                            capRoamBots.Add(team, 0);
+                            if (roamBots.ContainsKey(botTeam4))
+                                roamBots[botTeam4] = 0;
+                            else
+                                roamBots.Add(botTeam4, 0);
+
+                        }
+                        else if (!capRoamBots.ContainsKey(botTeam5) && _maxRoamCaptains == 2)
+                        {
+                            team = botTeam5;
+                            _arena.sendArenaMessage("A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
+                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
+                            _bots.Add(Flagger);
+                            _currentRoamCaptains++;
+                            roamingCaptianBots.Add(team);
+                            capRoamBots.Add(team, 0);
+                            if (roamBots.ContainsKey(botTeam5))
+                                roamBots[botTeam5] = 0;
+                            else
+                               roamBots.Add(botTeam5, 0);
+                        }
+                        else if (!capRoamBots.ContainsKey(botTeam6) && _maxRoamCaptains == 3)
+                        {
+                            team = botTeam6;
+                            _arena.sendArenaMessage("A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
+                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
+                            _bots.Add(Flagger);
+                            _currentRoamCaptains++;
+                            roamingCaptianBots.Add(team);
+                            capRoamBots.Add(team, 0);
+                            if (roamBots.ContainsKey(botTeam6))
+                               roamBots[botTeam6] = 0;
+                            else
+                                roamBots.Add(botTeam6, 3);
+                        }
+                        
                     }
 
-                Team team = null;
-                _arena.sendArenaMessage("A new engineer has been deployed to from Pioneer Station.");
-                if (_hqs[botTeam4] == null)
-                    team = botTeam4;
-                else if (_hqs[botTeam5] == null)
-                    team = botTeam5;
-                else if (_hqs[botTeam6] == null)
-                        team = botTeam6;
-
-                RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)464, team, null, warpPoint, this) as RoamingCaptain;
-                _bots.Add(Flagger);
-                _currentRoamCaptains++;
-                roamingCaptianBots.Add(team);
-                    roamBots.Add(team, 0);
                 }
                 _tickLastRoamingCaptain = now;
             }
@@ -1039,17 +1086,17 @@ namespace InfServer.Script.GameType_Eol
             if (_bots == null)
                 _bots = new List<Bot>();
 
-            int id = 0;
+            int id = 140;
             if (owner == null)
             {//This is a bot team
                 //int r = _rand.Next(0, 4);
                 //Find out what bot team this is
-                switch (captainBots[team])
+                /*switch (captainBots[team])
                 {
                     case 1: id = 143; break; //Bot team 1
                     case 2: id = 140; break; //Bot team 2
                     case 3: id = 141; break; //Bot team 3
-                }
+                }*/
                 //Spawn a random bot in their faction
                 if (botCount.ContainsKey(team))
                     botCount[team]++;
@@ -1065,25 +1112,35 @@ namespace InfServer.Script.GameType_Eol
             if (_bots == null)
                 _bots = new List<Bot>();
 
-            int id = 0;
+            int id = 144;
             if (owner == null)
             {//This is a bot team
                 //int r = _rand.Next(0, 4);
                 //Find out what bot team this is
-                switch (roamBots[team])
+                /*switch (capRoamBots[team])
                 {
-                    case 1: id = 143; break; //Bot team 4
-                    case 2: id = 140; break; //Bot team 5
-                    case 3: id = 141; break; //Bot team 6
-                }
+                    case 1: id = 144; break; //Bot team 4
+                    case 2: id = 146; break; //Bot team 5
+                    case 3: id = 145; break; //Bot team 6
+                }*/
                 //Spawn a random bot in their faction
-                if (botCount.ContainsKey(team))
-                    botCount[team]++;
+                if (roamBots.ContainsKey(team))
+                    roamBots[team]++;
                 else
-                    botCount.Add(team, 0);
+                    roamBots.Add(team, 0);
                 RoamingAttacker dBot = _arena.newBot(typeof(RoamingAttacker), (ushort)id, team, null, state, this, null) as RoamingAttacker;
                 _bots.Add(dBot);
             }
+        }
+
+        public void getRoamCaptTime()
+        {
+            _randomcheck = 0;
+            //_coolArray = new int[] { 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000, 80000 };
+            _coolArray = new int[] { 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800 };
+            Random r = new Random();
+            int _randomIndex = r.Next(0, _coolArray.Count());
+            _randomcheck = _coolArray.ElementAt(_randomIndex);
         }
 
         public void addPylons()
@@ -1531,6 +1588,7 @@ namespace InfServer.Script.GameType_Eol
 
         #endregion
 
+        #region Warping
         /// <summary>
         /// Finds a specific point within a radius with no physics for a player to warp to
         /// </summary>
@@ -1543,6 +1601,44 @@ namespace InfServer.Script.GameType_Eol
         {
             Helpers.ObjectState warpPoint = null;
             
+            try
+            {
+                int blockedAttempts = 10;
+
+                short pX;
+                short pY;
+
+                while (true)
+                {
+                    pX = posX;
+                    pY = posY;
+                    Helpers.randomPositionInArea(_arena, radius, ref pX, ref pY);
+                    if (_arena.getTile(pX, pY).Blocked)
+                    {
+                        blockedAttempts--;
+                        if (blockedAttempts <= 0)
+                            //Consider the area to be blocked
+                            return null;
+                        else
+                            continue;
+                    }
+                    warpPoint = new Helpers.ObjectState();
+                    warpPoint.positionX = pX;
+                    warpPoint.positionY = pY;
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.write(TLog.Exception, ex.Message);
+            }
+            return warpPoint;
+        }
+
+        public Helpers.ObjectState findOpenWarpBot(Arena _arena, short posX, short posY, int radius)
+        {
+            Helpers.ObjectState warpPoint = null;
+
             try
             {
                 int blockedAttempts = 10;
@@ -1591,15 +1687,14 @@ namespace InfServer.Script.GameType_Eol
             if (count == 0)
                 return null;
 
-            int index = 0;
 
             Random r = new Random();
             int _randFlag = r.Next(0, sortedFlags.Count);
-            index = _coolArray[_randFlag];
+            _flagchecking = _coolArray[_randFlag];
 
             warpPoint = new Helpers.ObjectState();
-            warpPoint.positionX = sortedFlags[index].posX;
-            warpPoint.positionY = sortedFlags[index].posY;
+            warpPoint.positionX = sortedFlags[_randFlag].posX;
+            warpPoint.positionY = sortedFlags[_randFlag].posY;
 
             short _randomDist = 0;
             Random rn = new Random();
@@ -1633,7 +1728,10 @@ namespace InfServer.Script.GameType_Eol
         {
             player.warp(warpTo.positionX, warpTo.positionY);
         }
-        
+
+        #endregion
+
+        #region HQ Levelling
         /// <summary>
         /// Triggered when an HQ levels up (or down?)
         /// </summary>
@@ -1647,6 +1745,7 @@ namespace InfServer.Script.GameType_Eol
             if (_hqs[team].Level == 10)
                 _arena.sendArenaMessage("&Headquarters - " + team._name + " HQ has reached the max level of " + _hqlevels.Count() + "!");
         }
+        #endregion
 
         #region Tickers and Updaters
         private void UpdateCTFTickers()
@@ -1709,7 +1808,7 @@ namespace InfServer.Script.GameType_Eol
         {
             int playing = _arena.PlayerCount;
 
-            if (playing < 2 && _gameBegun == true)
+            if (playing < 30 && _gameBegun == true)
             {
                 if (_eol.sectUnder60 == null)
                 {
@@ -1886,8 +1985,9 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStarting = 0;
             _tickKOTHGameStarting = 0;
             _tickGameLastTickerUpdate = Environment.TickCount;
-            //_tickLastEngineer = Environment.TickCount;
-            //_tickLastCaptain = Environment.TickCount;
+            _tickLastEngineer = Environment.TickCount;
+            _tickLastCaptain = Environment.TickCount;
+            _tickLastRoamingCaptain = Environment.TickCount;
             //_lastPylonCheck = Environment.TickCount;
             _eol.gameStart();
             //addPylons();
@@ -1920,14 +2020,24 @@ namespace InfServer.Script.GameType_Eol
         [Scripts.Event("Game.End")]
         public bool gameEnd()
         {   //Game finished, perhaps start a new one
+            _arena._bGameRunning = false;
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _tickKothGameStart = 0;
             _tickKOTHGameStarting = 0;
             _maxRoamCaptains = 0;
             _maxEngineers = 0;
-            //_tickLastEngineer = 0;
-            //_tickLastCaptain = 0;
+            _tickLastEngineer = Environment.TickCount;
+            _tickLastCaptain = Environment.TickCount;
+            _tickLastRoamingCaptain = Environment.TickCount;
+            _tickGameLastTickerUpdate = Environment.TickCount;
+            captainBots.Clear();
+            //botCount.Clear();
+            //roamBots.Clear();
+            capRoamBots.Clear();
+            engineerBots.Clear();
+            roamingCaptianBots.Clear();
+            _currentRoamCaptains = 0;
             //_lastPylonCheck = 0;
             _healingDone = null;
             _eol.gameEnd();
@@ -1947,8 +2057,12 @@ namespace InfServer.Script.GameType_Eol
             foreach (Bot bot in _condemnedBots)
                 bot.destroy(true);
 
-            _condemnedBots.Clear();
-            _bots.Clear();
+            //_condemnedBots.Clear();
+            //_bots.Clear();
+            _minX = 0;
+            _maxX = 0;
+            _minY = 0;
+            _maxY = 0;
             return true;
         }
 
@@ -1958,21 +2072,30 @@ namespace InfServer.Script.GameType_Eol
         [Scripts.Event("Game.Reset")]
         public bool gameReset()
         {   //Game reset, perhaps start a new one
+            _arena._bGameRunning = false;
             _tickGameStart = 0;
             _tickGameStarting = 0;
-            _eol.gameReset();
-            _tickEolGameStart = 0;
             _tickKothGameStart = 0;
             _tickKOTHGameStarting = 0;
             _maxRoamCaptains = 0;
             _maxEngineers = 0;
-            //_eol.sectUnder30 = "";
-            //_eol.sectUnder60 = "";
-            //_tickLastEngineer = 0;
-            //_tickLastCaptain = 0;
+            _tickLastEngineer = Environment.TickCount;
+            _tickLastCaptain = Environment.TickCount;
+            _tickLastRoamingCaptain = Environment.TickCount;
+            _tickGameLastTickerUpdate = Environment.TickCount;
+            captainBots.Clear();
+            //botCount.Clear();
+            //roamBots.Clear();
+            capRoamBots.Clear();
+            engineerBots.Clear();
+            roamingCaptianBots.Clear();
+            _currentRoamCaptains = 0;
             //_lastPylonCheck = 0;
-            //_bpylonsSpawned = false;
+            _healingDone = null;
+            _eol.gameEnd();
+            _tickEolGameStart = 0;
             _gameBegun = false;
+            _bbetweengames = true;
             foreach (Vehicle v in _arena.Vehicles)
                 if (v._type.Type == VehInfo.Types.Computer)
                     //Destroy it!
@@ -1988,9 +2111,12 @@ namespace InfServer.Script.GameType_Eol
 
             foreach (Bot bot in _condemnedBots)
                 bot.destroy(true);
-
-            _condemnedBots.Clear();
-            _bots.Clear();
+            //_condemnedBots.Clear();
+            //_bots.Clear();
+            _minX = 0;
+            _maxX = 0;
+            _minY = 0;
+            _maxY = 0;
             return true;
         }
 

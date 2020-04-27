@@ -41,6 +41,9 @@ namespace InfServer.Script.GameType_Eol
         protected int lastCheckedLevel;
         private float _seperation;
 
+        private WeaponController _weaponClose;  //Our weapon for close range
+        private WeaponController _weaponFar;    //Our weapon for anything that is not close range
+
         ///////////////////////////////////////////////////
         // Member Functions
         ///////////////////////////////////////////////////
@@ -57,13 +60,23 @@ namespace InfServer.Script.GameType_Eol
             _seperation = (float)rnd.NextDouble();
             steering = _movement as SteeringController;
 
+            //Our weapon to use when we are close to the enemy
+            _weaponClose = new WeaponController(_state, new WeaponController.WeaponSettings());
+            _weaponFar = new WeaponController(_state, new WeaponController.WeaponSettings());
+
+            //Equip our normal weapon
             if (type.InventoryItems[0] != 0)
-                _weapon.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+                _weaponFar.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+
+            //Setup our second weapon
+            if (type.InventoryItems[1] != 0)
+                _weaponClose.equip(AssetManager.Manager.getItemByID(type.InventoryItems[1]));
 
             _baseScript = BaseScript;
             owner = _owner;
             //figure out method to keep track of level if they died otherwise they will multiply bots - big bug
             lastCheckedLevel = 2; //They had to have gotton to level two to get a bot
+
         }
         /// <summary>
         /// Looks after the bot's functionality
@@ -97,7 +110,7 @@ namespace InfServer.Script.GameType_Eol
             }
 
             //Find out if our owner is gone and if he is destroy ourselves
-            if (owner == null && !_team._name.Contains(_team))
+            if (owner == null && !_team._name.Contains("Bot Team -"))
             {//Find a new owner if not a bot team
                 if (_team.ActivePlayerCount > 0)
                     owner = _team.ActivePlayers.Last();
@@ -152,19 +165,28 @@ namespace InfServer.Script.GameType_Eol
             }
 
             //Make sure we are not too far away from base
-            if (distance > 150) //Captain will stay closer to the base to avoid being killed (300 seems like too much)
+            if (distance > 250) //Captain will stay closer to the base to avoid being killed (300 seems like too much)
                 targetEnemy = null; //Too far, go back a little bit
+
 
             //Do we have a target?
             if (targetEnemy != null)
             {//Yes
                 //Go and attack them
                 bool bClearPath = Helpers.calcBresenhemsPredicate(_arena, _state.positionX, _state.positionY, targetEnemy._state.positionX, targetEnemy._state.positionY,
-                     delegate(LvlInfo.Tile t)
+                     delegate (LvlInfo.Tile t)
                      {
                          return !t.Blocked;
                      }
                  );
+
+                distance = Math.Pow((Math.Pow(_state.positionX - targetEnemy._state.positionX, 2) + Math.Pow(_state.positionY - targetEnemy._state.positionY, 2)) / 2, 0.5);
+
+                //Check how far they are to decide what weapon to use
+                if (distance < 50)
+                    _weapon = _weaponClose;
+                else
+                    _weapon = _weaponFar;
                 if (bClearPath)
                 {	//Persue directly!
                     steering.steerDelegate = steerForPersuePlayer;
@@ -195,7 +217,7 @@ namespace InfServer.Script.GameType_Eol
                         _arena._pathfinder.queueRequest(
                             (short)(_state.positionX / 16), (short)(_state.positionY / 16),
                             (short)(targetEnemy._state.positionX / 16), (short)(targetEnemy._state.positionY / 16),
-                            delegate(List<Vector3> path, int pathLength)
+                            delegate (List<Vector3> path, int pathLength)
                             {
                                 if (path != null)
                                 {
@@ -221,7 +243,7 @@ namespace InfServer.Script.GameType_Eol
                 if (distance <= 150)
                 {//Patrol
                     //Maintain defense bots
-                    if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < maxDefenseBots && now - _tickLastSpawn > 4000)
+                    if (owner == null && _baseScript.botCount.ContainsKey(_team) && _baseScript.botCount[_team] < _baseScript._maxDefenseBots && _baseScript.botCount[_team] < _baseScript._maxDefPerTeam && now - _tickLastSpawn > 4000)
                     {//Bot team 
                         //should probably get rid of owner for all bots
                         _baseScript.addBot(null, _state, _team);
@@ -235,7 +257,7 @@ namespace InfServer.Script.GameType_Eol
                         _arena._pathfinder.queueRequest(
                             (short)(_state.positionX / 16), (short)(_state.positionY / 16),
                             (short)((_state.positionX + _rand.Next(-75, 75)) / 16), (short)((_state.positionY + _rand.Next(-75, 75)) / 16),
-                            delegate(List<Vector3> path, int pathLength)
+                            delegate (List<Vector3> path, int pathLength)
                             {
                                 if (path != null)
                                 {
@@ -257,7 +279,7 @@ namespace InfServer.Script.GameType_Eol
                     //Find a clear path back
                     bool bClearPath = Helpers.calcBresenhemsPredicate(
                         _arena, _state.positionX, _state.positionY, x, y,
-                        delegate(LvlInfo.Tile t)
+                        delegate (LvlInfo.Tile t)
                         {
                             return !t.Blocked;
                         }
@@ -276,7 +298,7 @@ namespace InfServer.Script.GameType_Eol
                             _arena._pathfinder.queueRequest(
                                 (short)(_state.positionX / 16), (short)(_state.positionY / 16),
                                 (short)(x / 16), (short)(y / 16),
-                                delegate(List<Vector3> path, int pathLength)
+                                delegate (List<Vector3> path, int pathLength)
                                 {
                                     if (path != null)
                                     {
@@ -326,7 +348,7 @@ namespace InfServer.Script.GameType_Eol
             //We must have vision on it
             bool bVision = Helpers.calcBresenhemsPredicate(_arena,
                 _state.positionX, _state.positionY, enemy._state.positionX, enemy._state.positionY,
-                delegate(LvlInfo.Tile t)
+                delegate (LvlInfo.Tile t)
                 {
                     return !t.Blocked;
                 }
@@ -350,7 +372,7 @@ namespace InfServer.Script.GameType_Eol
 
             //Sort by distance to bot
             inTrackingRange.Sort(
-                delegate(Player p, Player q)
+                delegate (Player p, Player q)
                 {
                     return Comparer<double>.Default.Compare(
                         Helpers.distanceSquaredTo(_state, p._state), Helpers.distanceSquaredTo(_state, q._state));
@@ -371,7 +393,7 @@ namespace InfServer.Script.GameType_Eol
                 //Find a clear path
                 double dist = Helpers.distanceSquaredTo(_state, p._state);
                 bool bClearPath = Helpers.calcBresenhemsPredicate(_arena, _state.positionX, _state.positionY, p._state.positionX, p._state.positionY,
-                    delegate(LvlInfo.Tile t)
+                    delegate (LvlInfo.Tile t)
                     {
                         return !t.Blocked;
                     }
@@ -430,10 +452,10 @@ namespace InfServer.Script.GameType_Eol
         {
 
             List<Vehicle> bots = _arena.getVehiclesInRange(vehicle.state.positionX, vehicle.state.positionY, 400,
-                                                                delegate(Vehicle v)
+                                                                delegate (Vehicle v)
                                                                 { return (v is Bot); });
             IEnumerable<IVehicle> gbots = bots.ConvertAll<IVehicle>(
-                delegate(Vehicle v)
+                delegate (Vehicle v)
                 {
                     return (v as Bot).Abstract;
                 }

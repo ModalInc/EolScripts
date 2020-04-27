@@ -276,7 +276,7 @@ namespace InfServer.Script.GameType_Eol
             List<string> _activeSectors = new List<string>();
 
             int playing = _arena.PlayerCount;
-            if (playing < 2) //30
+            if (playing < 30) //30
             {
                 sectUnder30 = _sectorsToUse.OrderBy(s => _rand.Next()).First();
                 _activeSectors.Add(sectUnder30);
@@ -290,6 +290,10 @@ namespace InfServer.Script.GameType_Eol
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
+                    _baseScript._minX = 1;
+                    _baseScript._maxX = 8736;
+                    _baseScript._minY = 1;
+                    _baseScript._maxY = 6320;
                 }
                 else if (sectUnder30 == sectorB)
                 {
@@ -302,6 +306,10 @@ namespace InfServer.Script.GameType_Eol
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
+                    _baseScript._minX = 1;
+                    _baseScript._maxX = 8736;
+                    _baseScript._minY = 6320;
+                    _baseScript._maxY = 14368;
                 }
                 else if (sectUnder30 == sectorC)
                 {
@@ -314,6 +322,10 @@ namespace InfServer.Script.GameType_Eol
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
+                    _baseScript._minX = 8736;
+                    _baseScript._maxX = 22064;
+                    _baseScript._minY = 1;
+                    _baseScript._maxY = 6320;
                 }
                 else if (sectUnder30 == sectorD)
                 {
@@ -326,10 +338,14 @@ namespace InfServer.Script.GameType_Eol
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
+                    _baseScript._minX = 8736;
+                    _baseScript._maxX = 22064;
+                    _baseScript._minY = 6320;
+                    _baseScript._maxY = 14368;
                 }
             }
 
-            if (playing >= 2 && playing < 60) //30
+            if (playing >= 30 && playing < 60) //30
             {
                 sectUnder30 = _sectorsToUse.OrderBy(s => _rand.Next()).First();
                 _activeSectors.Add(sectUnder30);
@@ -351,6 +367,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 8736;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
                         }
                         if (sectUnder30 == sectorA && sectUnder60 == sectorC)
                         {
@@ -363,6 +383,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 6320;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorC)
                         {
@@ -375,6 +399,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 8736;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorB)
                         {
@@ -387,6 +415,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 6320;
+                            _baseScript._maxY = 14368;
                         }
                     }
                     else if (sectUnder30 == sectorB || sectUnder30 == sectorC)
@@ -404,6 +436,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 8736;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
                         }
                         if (sectUnder30 == sectorB && sectUnder60 == sectorD)
                         {
@@ -416,6 +452,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 6320;
+                            _baseScript._maxY = 14368;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorA)
                         {
@@ -428,6 +468,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 6320;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorD)
                         {
@@ -440,6 +484,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 8736;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
                         }
                     }
                 }
@@ -460,6 +508,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 8736;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
                         }
                         if (sectUnder30 == sectorA && sectUnder60 == sectorC)
                         {
@@ -472,6 +524,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 6320;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorC)
                         {
@@ -484,6 +540,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 8736;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
                         }
                         if (sectUnder30 == sectorD && sectUnder60 == sectorB)
                         {
@@ -496,6 +556,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 6320;
+                            _baseScript._maxY = 14368;
                         }
                     }
                     else if (sectUnder30 == sectorB || sectUnder30 == sectorC)
@@ -513,6 +577,11 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 8736;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
+
                         }
                         if (sectUnder30 == sectorB && sectUnder60 == sectorD)
                         {
@@ -525,6 +594,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 6320;
+                            _baseScript._maxY = 14368;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorA)
                         {
@@ -537,6 +610,10 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 1;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 6320;
                         }
                         if (sectUnder30 == sectorC && sectUnder60 == sectorD)
                         {
@@ -549,11 +626,15 @@ namespace InfServer.Script.GameType_Eol
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
+                            _baseScript._minX = 8736;
+                            _baseScript._maxX = 22064;
+                            _baseScript._minY = 1;
+                            _baseScript._maxY = 14368;
                         }
                     }
                 }
             }
-            if (playing > 60)
+            if (playing >= 60)
             {
                 Sectors(fTL, fBL, fTR, fBR);
                 _activeSectors.Add(allSector);
@@ -561,6 +642,10 @@ namespace InfServer.Script.GameType_Eol
                 bOneSector = false;
                 bTwoSector = false;
                 bAllSectors = true;
+                _baseScript._minX = 1;
+                _baseScript._maxX = 22064;
+                _baseScript._minY = 1;
+                _baseScript._maxY = 14368;
             }
         }
 
@@ -629,7 +714,7 @@ namespace InfServer.Script.GameType_Eol
         public void drawCurrentRecSector()
         {
             short circleMarkLocation = _left;
-            short distanceBetweenCircleMarks = 500;
+            short distanceBetweenCircleMarks = 350;
 
             Helpers.ObjectState state = new Helpers.ObjectState();
             Helpers.ObjectState target = new Helpers.ObjectState();

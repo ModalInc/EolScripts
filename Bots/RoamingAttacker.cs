@@ -25,6 +25,9 @@ namespace InfServer.Script.GameType_Eol
         public Player owner;					//The headquarters we defend
         private Player targetEnemy;             //The enemy that needs attacking
         private int _stalkRadius = 500;
+        private Vehicle _roamCapt;
+
+        protected int radius = 750;
 
         private Random _rand = new Random(System.Environment.TickCount);
 
@@ -38,6 +41,9 @@ namespace InfServer.Script.GameType_Eol
         protected int lastCheckedLevel;
         private float _seperation;
 
+        private WeaponController _weaponClose;  //Our weapon for close range
+        private WeaponController _weaponFar;    //Our weapon for anything that is not close range
+
         ///////////////////////////////////////////////////
         // Member Functions
         ///////////////////////////////////////////////////
@@ -45,27 +51,48 @@ namespace InfServer.Script.GameType_Eol
         /// <summary>
         /// Generic constructor
         /// </summary>
-        public RoamingAttacker(VehInfo.Car type, Helpers.ObjectState state, Arena arena)
+        public RoamingAttacker(VehInfo.Car type, Helpers.ObjectState state, Arena arena, Script_Eol BaseScript, Player _owner)
             : base(type, state, arena,
                     new SteeringController(type, state, arena))
         {
             Random rnd = new Random();
 
+            //Handle movements
             _seperation = (float)rnd.NextDouble();
             steering = _movement as SteeringController;
 
+            //Our weapon to use when we are close to the enemy
+            _weaponClose = new WeaponController(_state, new WeaponController.WeaponSettings());
+            _weaponFar = new WeaponController(_state, new WeaponController.WeaponSettings());
+
+            //Equip our normal weapon
             if (type.InventoryItems[0] != 0)
-                _weapon.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+                _weaponFar.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+
+            //Setup our second weapon
+            if (type.InventoryItems[1] != 0)
+                _weaponClose.equip(AssetManager.Manager.getItemByID(type.InventoryItems[1]));
+
+
+
+            _baseScript = BaseScript;
+
+            owner = _owner;
         }
         /// <summary>
         /// Looks after the bot's functionality
         /// </summary>
         public override bool poll()
         {
+            short x = 0, y = 0;
+
             //Dead? Do nothing
             if (IsDead)
             {//Dead
-                steering.steerDelegate = null; //Stop movements                
+                steering.steerDelegate = null; //Stop movements  
+                _baseScript.roamBots[_team]--; //Signal to our captain we died
+                if (_baseScript.roamBots[_team] < 0)
+                    _baseScript.roamBots[_team] = 0;
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
             }
@@ -83,52 +110,103 @@ namespace InfServer.Script.GameType_Eol
                 return base.poll();
             }
 
-            if (eol.roamingCaptianBots(_team) == null)
-            {
-                kill(null);
-                bCondemned = true;
-                _baseScript.captainBots.Remove(_team);
-                return false;
+            //Find out if our owner is gone
+            if (owner == null && !_team._name.Contains("Bot Team -"))
+            {//Find a new owner if not a bot team
+                if (_team.ActivePlayerCount >= 0)
+                    owner = _team.ActivePlayers.Last();
+                else
+                {
+                    kill(null);
+                    _baseScript.roamBots[_team]--; //Signal to our captain we died
+                    _baseScript.roamBots[_team] = 0; //Signal to our captain we died
+                    bCondemned = true; //Make sure the bot gets removed in polling
+                    return base.poll();
+                }
             }
 
-            //Find out of we are suppose to be attacking anyone
+            //Find out if our captain died
+            if (!_baseScript.capRoamBots.ContainsKey(_team))
+            {
+                kill(null);
+                _baseScript.roamBots[_team]--; //Signal to our captain we died
+                _baseScript.roamBots[_team] = 0; //Signal to our captain we died
+                bCondemned = true; //Make sure the bot gets removed in polling
+                return base.poll();
+            }
+
+            //Get a list of all the roaming captains in the arena
+            IEnumerable<Vehicle> roamingCaps = _arena.Vehicles.Where(v => v._type.Id == _baseScript._roamCaptains);
+
+
+            //Find our HQ
+            foreach (Vehicle v in roamingCaps)
+            {
+                if (v._team == _team)
+                {//We found it
+                    x = v._state.positionX;
+                    y = v._state.positionY;
+                    _roamCapt = v;
+                }
+            }
+
+            //Find out how far we are from base
+            double distance = Math.Pow((Math.Pow(_state.positionX - _roamCapt._state.positionX, 2) + Math.Pow(_state.positionY - _roamCapt._state.positionY, 2)) / 2, 0.5);
+
+            //Make sure we are not too far away from base
+            if (distance > radius)
+                targetEnemy = null; //Too far, go back a little bit
+
+            //Check if an HQ was found, if not return to polling
+            if (_roamCapt == null)
+                return base.poll();
+
+            //Find out if we are suppose to be attacking anyone
             if (targetEnemy == null || !isValidTarget(targetEnemy))
                 targetEnemy = getTargetPlayer();
 
-            //Do we have a target?
             if (targetEnemy != null)
-            {//Yes
-                //Go and attack them
+            {//Go and attack them
                 bool bClearPath = Helpers.calcBresenhemsPredicate(_arena, _state.positionX, _state.positionY, targetEnemy._state.positionX, targetEnemy._state.positionY,
-                     delegate(LvlInfo.Tile t)
+                     delegate (LvlInfo.Tile t)
                      {
                          return !t.Blocked;
                      }
                  );
+
+                distance = Math.Pow((Math.Pow(_state.positionX - targetEnemy._state.positionX, 2) + Math.Pow(_state.positionY - targetEnemy._state.positionY, 2)) / 2, 0.5);
+
+                //Check how far they are to decide what weapon to use
+                if (distance < 50)
+                    _weapon = _weaponClose;
+                else
+                    _weapon = _weaponFar;
+
+                distance = Math.Pow((Math.Pow(_state.positionX - _roamCapt._state.positionX, 2) + Math.Pow(_state.positionY - _roamCapt._state.positionY, 2)) / 2, 0.5);
+
                 if (bClearPath)
                 {	//Persue directly!
                     steering.steerDelegate = steerForPersuePlayer;
-
                     //Can we shoot?
                     if (_weapon.ableToFire())
                     {
                         int aimResult = _weapon.getAimAngle(targetEnemy._state);
-
-                        //Pick a weapon to use depending on distance
 
                         if (_weapon.isAimed(aimResult))
                         {	//Spot on! Fire?
                             _itemUseID = _weapon.ItemID;
                             _weapon.shotFired();
                         }
+
                         steering.bSkipAim = true;
                         steering.angle = aimResult;
                     }
                     else
                         steering.bSkipAim = false;
                 }
-                else //The path is not clear!
-                {	//Does our path need to be updated?
+                else
+                {
+                    //Does our path need to be updated?
                     if (now - _tickLastPath > Script_Eol.c_defensePathUpdateInterval)
                     {
                         //Update it!
@@ -137,12 +215,13 @@ namespace InfServer.Script.GameType_Eol
                         _arena._pathfinder.queueRequest(
                             (short)(_state.positionX / 16), (short)(_state.positionY / 16),
                             (short)(targetEnemy._state.positionX / 16), (short)(targetEnemy._state.positionY / 16),
-                            delegate(List<Vector3> path, int pathLength)
+                            delegate (List<Vector3> path, int pathLength)
                             {
                                 if (path != null)
                                 {
                                     _path = path;
                                     _pathTarget = 1;
+
                                 }
                                 _tickLastPath = now;
                             }
@@ -156,6 +235,86 @@ namespace InfServer.Script.GameType_Eol
                     steering.steerDelegate = steerForPersuePlayer;
                 else
                     steering.steerDelegate = steerAlongPath;
+
+            }
+            else
+            {//No enemy, defend and patrol or go back to base
+                //Are we at our base?
+                if (distance <= 150)
+                {
+                    if (now - _tickLastPath > Script_Eol.c_CaptainRoamPathUpdateInterval)
+                    {	//Update it!
+                        _tickLastPath = int.MaxValue;
+
+                        _arena._pathfinder.queueRequest(
+                            (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                            (short)((_state.positionX + _rand.Next(-150, 150)) / 16), (short)((_state.positionY + _rand.Next(-150, 150)) / 16),
+                            delegate (List<Vector3> path, int pathLength)
+                            {
+                                if (path != null)
+                                {
+                                    _path = path;
+                                    _pathTarget = 1;
+                                }
+                                _tickLastPath = now;
+                            }
+                        );
+                    }
+
+                    //Navigate to base
+                    if (_path == null)
+                        //If we can't find our way to base, just mindlessly walk in its direction for now
+                        steering.steerDelegate = steerForFollowOwner;
+                    else
+                        steering.steerDelegate = steerAlongPath;
+                }
+                else
+                {//Go back to base
+                    //Check again for enemies?
+                    //?
+                    //Find a clear path back
+                    bool bClearPath = Helpers.calcBresenhemsPredicate(
+                        _arena, _state.positionX, _state.positionY, x, y,
+                        delegate (LvlInfo.Tile t)
+                        {
+                            return !t.Blocked;
+                        }
+                    );
+                    if (bClearPath)
+                        //Persue directly!
+                        steering.steerDelegate = steerForFollowOwner;
+
+                    else
+                    {//Find a new path home
+                        //Does our path need to be updated?
+                        if (now - _tickLastPath > Script_Eol.c_CaptainRoamPathUpdateInterval)
+                        {	//Update it!
+                            _tickLastPath = int.MaxValue;
+
+                            _arena._pathfinder.queueRequest(
+                                (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                (short)(x / 16), (short)(y / 16),
+                                delegate (List<Vector3> path, int pathLength)
+                                {
+                                    if (path != null)
+                                    {
+                                        _path = path;
+                                        _pathTarget = 1;
+                                    }
+                                    _tickLastPath = now;
+                                }
+                            );
+                        }
+
+                        //Navigate to base
+                        if (_path == null)
+                            //If we can't find our way to base, just mindlessly walk in its direction for now
+                            steering.steerDelegate = steerForFollowOwner;
+                        else
+                            steering.steerDelegate = steerAlongPath;
+
+                    }
+                }
             }
 
             //Handle normal functionality
@@ -235,7 +394,7 @@ namespace InfServer.Script.GameType_Eol
 
         #region Steer Delegates
         /// <summary>
-        /// Steers the zombie along the defined path
+        /// Steers the bot along the defined path
         /// </summary>
         public Vector3 steerAlongPath(InfantryVehicle vehicle)
         {	//Are we at the end of the path?
@@ -257,14 +416,13 @@ namespace InfServer.Script.GameType_Eol
         }
 
         /// <summary>
-        /// Keeps the combat bot around the engineer
-        /// Change to keeping him around the HQ
+        /// Keeps the combat bot around it's captain
         /// </summary>
         public Vector3 steerForFollowOwner(InfantryVehicle vehicle)
         {
 
             Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
-            Vector3 pursuitSteer = vehicle.SteerForPursuit(vHq.Abstract, 0.2f);
+            Vector3 pursuitSteer = vehicle.SteerForPursuit(_roamCapt.Abstract, 0.2f);
 
             return (wanderSteer * 1.6f) + pursuitSteer;
         }
