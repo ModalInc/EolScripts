@@ -37,9 +37,20 @@ namespace InfServer.Script.GameType_Eol
         protected int _pathTarget;				//The next target node of the path
         protected int _tickLastPath;			//The time at which we last made a path to the player   
         protected int _tickLastCollision;
+        protected int _tickLastRoamAttacker;
         protected int _tickLastSpawn;               //Tick at which we spawned a bot
         protected int lastCheckedLevel;
         private float _seperation;
+        protected int tickCount;
+
+        private int _optimalDistance = 50;         //The optimal distance from the player we want to be
+        private int _optimalDistanceTolerance = 40; //The distance tolerance as we're moving back towards the player
+        private int _distanceTolerance = 120;       //The tolerance from the optimal distance we accept
+
+        private int _tickNextStrafeChange;          //The last time we changed strafe direction
+
+        private bool _bStrafeLeft;                  //Are we strafing left or right?
+        private bool _bChasing;						//Are we chasing the player back into optimal range?
 
         private WeaponController _weaponClose;  //Our weapon for close range
         private WeaponController _weaponFar;    //Our weapon for anything that is not close range
@@ -57,6 +68,8 @@ namespace InfServer.Script.GameType_Eol
         {
             Random rnd = new Random();
 
+            _tickNextStrafeChange = 300;
+
             //Handle movements
             _seperation = (float)rnd.NextDouble();
             steering = _movement as SteeringController;
@@ -73,7 +86,7 @@ namespace InfServer.Script.GameType_Eol
             if (type.InventoryItems[1] != 0)
                 _weaponClose.equip(AssetManager.Manager.getItemByID(type.InventoryItems[1]));
 
-
+            targetEnemy = null;
 
             _baseScript = BaseScript;
 
@@ -85,6 +98,10 @@ namespace InfServer.Script.GameType_Eol
         public override bool poll()
         {
             short x = 0, y = 0;
+
+            //steering.stop();
+
+            tickCount = Environment.TickCount;
 
             //Dead? Do nothing
             if (IsDead)
@@ -157,7 +174,7 @@ namespace InfServer.Script.GameType_Eol
             if (distance > radius)
                 targetEnemy = null; //Too far, go back a little bit
 
-            //Check if an HQ was found, if not return to polling
+            //Check if a roaming captain was found, if not return to polling
             if (_roamCapt == null)
                 return base.poll();
 
@@ -165,81 +182,62 @@ namespace InfServer.Script.GameType_Eol
             if (targetEnemy == null || !isValidTarget(targetEnemy))
                 targetEnemy = getTargetPlayer();
 
+            _tickLastRoamAttacker = now;
+
+
             if (targetEnemy != null)
             {//Go and attack them
-                bool bClearPath = Helpers.calcBresenhemsPredicate(_arena, _state.positionX, _state.positionY, targetEnemy._state.positionX, targetEnemy._state.positionY,
-                     delegate (LvlInfo.Tile t)
-                     {
-                         return !t.Blocked;
-                     }
-                 );
+                Vector2 distanceVector = new Vector2(
+                    _state.positionX - targetEnemy._state.positionX,
+                    _state.positionY - targetEnemy._state.positionY);
+                double distance2 = distanceVector.Length;
 
-                distance = Math.Pow((Math.Pow(_state.positionX - targetEnemy._state.positionX, 2) + Math.Pow(_state.positionY - targetEnemy._state.positionY, 2)) / 2, 0.5);
 
-                //Check how far they are to decide what weapon to use
-                if (distance < 50)
+                if (distance2 <= 50)
                     _weapon = _weaponClose;
                 else
                     _weapon = _weaponFar;
 
-                distance = Math.Pow((Math.Pow(_state.positionX - _roamCapt._state.positionX, 2) + Math.Pow(_state.positionY - _roamCapt._state.positionY, 2)) / 2, 0.5);
+                if (_weapon.ableToFire())
+                {
+                    int aimResult = _weapon.getAimAngle(targetEnemy._state);
 
-                if (bClearPath)
-                {	//Persue directly!
-                    steering.steerDelegate = steerForPersuePlayer;
-                    //Can we shoot?
-                    if (_weapon.ableToFire())
-                    {
-                        int aimResult = _weapon.getAimAngle(targetEnemy._state);
-
-                        if (_weapon.isAimed(aimResult))
-                        {	//Spot on! Fire?
-                            _itemUseID = _weapon.ItemID;
-                            _weapon.shotFired();
-                        }
-
-                        steering.bSkipAim = true;
-                        steering.angle = aimResult;
+                    if (_weapon.isAimed(aimResult))
+                    {   //Spot on! Fire?
+                        _itemUseID = _weapon.ItemID;
+                        _weapon.shotFired();
                     }
-                    else
-                        steering.bSkipAim = false;
+
+                    steering.bSkipAim = true;
+                    steering.angle = aimResult;
                 }
                 else
                 {
-                    //Does our path need to be updated?
-                    if (now - _tickLastPath > Script_Eol.c_defensePathUpdateInterval)
-                    {
-                        //Update it!
-                        _tickLastPath = int.MaxValue;
-
-                        _arena._pathfinder.queueRequest(
-                            (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                            (short)(targetEnemy._state.positionX / 16), (short)(targetEnemy._state.positionY / 16),
-                            delegate (List<Vector3> path, int pathLength)
-                            {
-                                if (path != null)
-                                {
-                                    _path = path;
-                                    _pathTarget = 1;
-
-                                }
-                                _tickLastPath = now;
-                            }
-                        );
-                    }
+                    steering.bSkipAim = false;
                 }
 
-                //Navigate to him
-                if (_path == null)
-                    //If we can't find out way to him, just mindlessly walk in his direction for now
-                    steering.steerDelegate = steerForPersuePlayer;
+                if ((_bChasing && distance2 < (_optimalDistance + _distanceTolerance) &&
+                    distance2 > (_optimalDistance - _distanceTolerance))
+                    ||
+                    (!_bChasing && distance2 < (_optimalDistance + _optimalDistanceTolerance) &&
+                    distance2 > (_optimalDistance - _optimalDistanceTolerance)))
+                {   //We're in dueling range, and must no longer be chasing
+                    _bChasing = false;
+                }
                 else
-                    steering.steerDelegate = steerAlongPath;
+                    //We need to get in range!
+                    _bChasing = true;
 
+                if (distance2 > _optimalDistance)
+                    _movement.thrustForward();
+                else
+                   _movement.thrustBackward();
             }
             else
             {//No enemy, defend and patrol or go back to base
                 //Are we at our base?
+                distance = Math.Pow((Math.Pow(_state.positionX - _roamCapt._state.positionX, 2) + Math.Pow(_state.positionY - _roamCapt._state.positionY, 2)) / 2, 0.5);
+
                 if (distance <= 150)
                 {
                     if (now - _tickLastPath > Script_Eol.c_CaptainRoamPathUpdateInterval)

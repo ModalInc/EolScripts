@@ -51,6 +51,7 @@ namespace InfServer.Script.GameType_Eol
         private int _tickKothGameStart;
         private int _minPlayers;                //The minimum amount of players needed for a KOTH game
         private long _KothGameCheck;
+        private bool _kothGameRunning;
 
         //CTF
         private int _jackpot;					//The game's jackpot so far
@@ -61,6 +62,7 @@ namespace InfServer.Script.GameType_Eol
         private int _victoryNotice;				//The number of victory notices we've done
         private int _lastFlagCheck;
         private bool _gameWon = false;
+        private int _minPlayersCTF;
 
         //Flag Checks for roaming captains
         public List<Arena.FlagState> _flags;
@@ -241,6 +243,7 @@ namespace InfServer.Script.GameType_Eol
             _arena = invoker as Arena;
             _config = _arena._server._zoneConfig;
             _minPlayers = Int32.MaxValue;
+            _minPlayersCTF = Int32.MaxValue;
 
             //Load up our gametype handlers
             _eol = new EolBoundaries(_arena, this);
@@ -248,10 +251,11 @@ namespace InfServer.Script.GameType_Eol
             _KothGameCheck = 432000000000;
             //Load up Pylons
             _bpylonsSpawned = false;
+            _kothGameRunning = false;
             foreach (Arena.FlagState fs in _arena._flags.Values)
             {	//Determine the minimum number of players
-                if (fs.flag.FlagData.MinPlayerCount < _minPlayers)
-                    _minPlayers = fs.flag.FlagData.MinPlayerCount;
+                if (fs.flag.FlagData.MinPlayerCount < _minPlayersCTF)
+                    _minPlayersCTF = fs.flag.FlagData.MinPlayerCount;
 
                 //Register our flag change events
                 fs.TeamChange += onFlagChange;
@@ -578,7 +582,7 @@ namespace InfServer.Script.GameType_Eol
 
             //Find out if we will be running KOTH games and if we have enough players
             _minPlayers = _config.king.minimumPlayers;
-            if (_minPlayers > 0)
+            if (_minPlayers > playing)
             {
                 _playerCrownStatus = new Dictionary<Player, PlayerCrownStatus>();
                 _crownTeams = new List<Team>();
@@ -619,14 +623,17 @@ namespace InfServer.Script.GameType_Eol
                 }
             }
 
+            updateTickers();
+            UpdateZoneTickers();
+
             //Update our tickers
-            if (now - _tickGameLastTickerUpdate > 500)
+            
             {
-                updateTickers();
-                UpdateCTFTickers();
-                UpdateKillStreaks();
-                UpdateZoneTickers();
-                _tickGameLastTickerUpdate = now;
+                
+                //UpdateCTFTickers();
+                //UpdateKillStreaks();
+                
+                
             }
 
             /*if (_tickGameStart > 2000)
@@ -924,7 +931,7 @@ namespace InfServer.Script.GameType_Eol
                 }
                 _tickLastEngineer = now;
             }
-
+            
             if (now - _tickLastRoamingCaptain > _checkRoamingCaptain && _gameBegun == true)
             {
                 if (_currentRoamCaptains < _maxRoamCaptains)
@@ -934,10 +941,9 @@ namespace InfServer.Script.GameType_Eol
                     int id = 0;
                     
                     Helpers.ObjectState warpPoint = null;
+                    Helpers.ObjectState openPoint = null;
                     List<Arena.FlagState> sortedFlags = new List<Arena.FlagState>();
 
-                    Helpers.ObjectState openPoint = null;
-                    
                     sortedFlags = _arena._flags.Values.Where(f => f.posX >= _minX && f.posX <= _maxX && f.posY >= _minY && f.posY <= _maxY).ToList();
 
                     int count = sortedFlags.Count;
@@ -952,8 +958,8 @@ namespace InfServer.Script.GameType_Eol
                         int index = 0;
 
                         Random r = new Random();
-                        int _randFlag = r.Next(0, sortedFlags.Count);
-                        index = _randFlag;
+                        index = r.Next(0, sortedFlags.Count);
+                        
 
                         warpPoint = new Helpers.ObjectState();
                         warpPoint.positionX = sortedFlags[index].posX;
@@ -968,7 +974,7 @@ namespace InfServer.Script.GameType_Eol
                         int _randPos = rn.Next(0, 4);
                         spawnPos = _randPos;
 
-                        short randomoffset = (short)(rand.Next(100, 800));
+                        short randomoffset = (short)(rand.Next(10, 200));
 
                         switch (spawnPos)
                         {
@@ -992,52 +998,25 @@ namespace InfServer.Script.GameType_Eol
 
 
                         Team team = null;
-                        if (!capRoamBots.ContainsKey(botTeam4) && _maxRoamCaptains == 1)
-                        {
+                        if (!roamingCaptianBots.Contains(botTeam4))
                             team = botTeam4;
-                            _arena.sendArenaMessage("A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
-                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
-                            _bots.Add(Flagger);
-                            _currentRoamCaptains++;
-                            roamingCaptianBots.Add(team);
-                            capRoamBots.Add(team, 0);
-                            if (roamBots.ContainsKey(botTeam4))
-                                roamBots[botTeam4] = 0;
-                            else
-                                roamBots.Add(botTeam4, 0);
-
-                        }
-                        else if (!capRoamBots.ContainsKey(botTeam5) && _maxRoamCaptains == 2)
-                        {
+                        else if (!roamingCaptianBots.Contains(botTeam5))
                             team = botTeam5;
-                            _arena.sendArenaMessage("A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
-                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
-                            _bots.Add(Flagger);
-                            _currentRoamCaptains++;
-                            roamingCaptianBots.Add(team);
-                            capRoamBots.Add(team, 0);
-                            if (roamBots.ContainsKey(botTeam5))
-                                roamBots[botTeam5] = 0;
-                            else
-                               roamBots.Add(botTeam5, 0);
-                        }
-                        else if (!capRoamBots.ContainsKey(botTeam6) && _maxRoamCaptains == 3)
-                        {
+                        else if (!roamingCaptianBots.Contains(botTeam6))
                             team = botTeam6;
-                            _arena.sendArenaMessage("A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
-                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
-                            _bots.Add(Flagger);
-                            _currentRoamCaptains++;
-                            roamingCaptianBots.Add(team);
-                            capRoamBots.Add(team, 0);
-                            if (roamBots.ContainsKey(botTeam6))
-                               roamBots[botTeam6] = 0;
-                            else
-                                roamBots.Add(botTeam6, 3);
-                        }
-                        
-                    }
 
+                        _arena.sendArenaMessage("A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
+                        RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
+                        _bots.Add(Flagger);
+                        _currentRoamCaptains++;
+                        roamingCaptianBots.Add(team);
+                        capRoamBots.Add(team, 0);
+                        if (roamBots.ContainsKey(team))
+                        { roamBots[team] = 0; }
+                        else
+                        { roamBots.Add(team, 0); }
+                        _tickLastRoamingCaptain = now;
+                    }
                 }
                 _tickLastRoamingCaptain = now;
             }
@@ -1463,6 +1442,7 @@ namespace InfServer.Script.GameType_Eol
             _tickKothGameStart = Environment.TickCount;
             _tickKOTHGameStarting = 0;
             _playerCrownStatus.Clear();
+            _kothGameRunning = true;
 
             //Let everyone know
             _arena.sendArenaMessage("Game has started!", 1);
@@ -1514,7 +1494,7 @@ namespace InfServer.Script.GameType_Eol
         /// </summary>
         public void updateTickers()
         {
-            if (_arena.ActiveTeams.Count() > 1)
+            if (_arena.ActiveTeams.Count() > 1 && _kothGameRunning)
             {//Show players their crown timer using a ticker
                 _arena.setTicker(1, 0, 0, delegate(Player p)
                 {
@@ -1775,9 +1755,9 @@ namespace InfServer.Script.GameType_Eol
                 }
             }
             if (!string.IsNullOrWhiteSpace(format))
-            { _arena.setTicker(1, 2, 0, format); }
+            { _arena.setTicker(1, 4, 0, format); }
 
-            _arena.setTicker(2, 2, 0, delegate (Player p)
+            _arena.setTicker(2, 4, 0, delegate (Player p)
             {
                 if (p.StatsCurrentGame == null)
                 {
@@ -1785,8 +1765,6 @@ namespace InfServer.Script.GameType_Eol
                 }
                 return string.Format("Personal Score: Kills={0} - Deaths={1}", p.StatsCurrentGame.kills, p.StatsCurrentGame.deaths);
             });
-
-            
         }
 
         /// <summary>
@@ -1804,64 +1782,76 @@ namespace InfServer.Script.GameType_Eol
             }
         }
 
-        private void UpdateZoneTickers()
+        public void UpdateZoneTickers()
         {
+            int now = Environment.TickCount;
             int playing = _arena.PlayerCount;
+            if (now - _tickGameLastTickerUpdate > 500)
+            {
+                UpdateCTFTickers();
+                if (playing < 30 && _gameBegun == true)
+                {
+                    if (_eol.sectUnder60 == null)
+                    {
+                        _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); //30
+                        _tickGameLastTickerUpdate = now;
 
-            if (playing < 30 && _gameBegun == true)
-            {
-                if (_eol.sectUnder60 == null)
-                {
-                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); //30
+                    }
+                    if (_eol.sectUnder60 != null)
+                    {
+                        if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        _tickGameLastTickerUpdate = now;
+                    }
                 }
-                if (_eol.sectUnder60 != null)
-                {
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                }
-            }
 
-            if (playing >= 30 && playing < 60 && _gameBegun == true) //30
-            {
-                if (_eol.sectUnder60 != null)
+                if (playing >= 30 && playing < 60 && _gameBegun == true) //30
                 {
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
-                    if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
-                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                    if (_eol.sectUnder60 != null)
+                    {
+                        if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector B")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector A" && _eol.sectUnder60 == "Sector C")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector A")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector A")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector B" && _eol.sectUnder60 == "Sector D")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector B")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector C" && _eol.sectUnder60 == "Sector D")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " and " + _eol.sectUnder60 + " are open"); }
+                        if (_eol.sectUnder30 == "Sector D" && _eol.sectUnder60 == "Sector C")
+                        { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder60 + " and " + _eol.sectUnder30 + " are open"); }
+                        _tickGameLastTickerUpdate = now;
+                    }
+                    if (_eol.sectUnder60 == null)
+                    { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open");
+                        _tickGameLastTickerUpdate = now;
+                    }
                 }
-                if (_eol.sectUnder60 == null) { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
-            }
-            if (playing > 60 && _gameBegun == true)
-            {
-                if (_eol.sectUnder30 == "All Sectors") { _arena.setTicker(1, 3, 0, "All Sectors are currently open with low radiation levels"); }
-                if (_eol.sectUnder30 != "All Sectors") { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
+                if (playing > 60 && _gameBegun == true)
+                {
+                    if (_eol.sectUnder30 == "All Sectors") { _arena.setTicker(1, 3, 0, "All Sectors are currently open with low radiation levels"); }
+                    if (_eol.sectUnder30 != "All Sectors") { _arena.setTicker(1, 3, 0, "Radiation warning! Only " + _eol.sectUnder30 + " is open"); }
+                    _tickGameLastTickerUpdate = now;
+                }
             }
         }
 
@@ -2021,6 +2011,7 @@ namespace InfServer.Script.GameType_Eol
         public bool gameEnd()
         {   //Game finished, perhaps start a new one
             _arena._bGameRunning = false;
+            _kothGameRunning = false;
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _tickKothGameStart = 0;
@@ -2073,6 +2064,7 @@ namespace InfServer.Script.GameType_Eol
         public bool gameReset()
         {   //Game reset, perhaps start a new one
             _arena._bGameRunning = false;
+            _kothGameRunning = false;
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _tickKothGameStart = 0;

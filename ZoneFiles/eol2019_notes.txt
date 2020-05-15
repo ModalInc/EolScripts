@@ -1,18 +1,14 @@
-Eol Pioneer Station: Revision
+Eol Pioneer Station
 
-03/09/2019
+~b~2Updates, April 27th 2020~2~b
+
+Revision Notes:
+
+Removed Inventory Key Preference for most standard armor items. Only those utilities that need to be turned on or off will have a key preference.
+Added in Conscript only armor
+
 
 New map layout, extensive work has been done to the map to allow for population dependant play. 
-
-The map is segregated into 4 sectors. Top left sector is Sector A, Bottom left sector is Sector B, top right sector is Sector C and bottom right is Sector D.
-When the population is below 30 only 1 sector will be opened at random. If the population surpasses 30 but lower than 60 players then another sector will open, making two ajoining sectors open together.
-Should the population surpass 60 players, all sectors will open. If you step into a closed sector you will lose health at a rapid rate and could ultimately die.
-
-Added in a flagging points game. First team to 10000 accumilated flagging points win that game. The flags will then reset and can be recaptured to start again.
-
-Headquarters have been added in. These can be built by engineers. They cost 5000 for the kit(3500 sale price) and use 20 Titanium Alloy to make a HQ.
-HQ's have a bounty levelling system, you get bounty experience and you use this to level up the HQ.
-You get points for holding and levelling your Headquarters. There are bonus points for attackers should they destroy another teams headquarters.
 
 
 

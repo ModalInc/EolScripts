@@ -691,7 +691,7 @@ namespace InfServer.Script.GameType_Eol
 
             byte fireAngle = Helpers.computeLeadFireAngle(state, target, 2000 / 100);
             fireAngle = Helpers.computeLeadFireAngle(state, target, 2000 / 100); // Right, Bottom to Top
-            Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _bottom, 0, fireAngle, 0);
+            Helpers.Player_RouteExplosion(_arena.Players, 1237, _right, _bottom, 0, fireAngle, 0);
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middle, 0, fireAngle, 0); //Middle
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middleTop, 0, fireAngle, 0); //MiddleTop
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, _middleBottom, 0, fireAngle, 0); //MiddleBottom
@@ -703,7 +703,7 @@ namespace InfServer.Script.GameType_Eol
             target.positionY = _bottom;
 
             fireAngle = Helpers.computeLeadFireAngle(state, target, 2000 / 100); //Left, Top to Bottom
-            Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _top, 0, fireAngle, 0);
+            Helpers.Player_RouteExplosion(_arena.Players, 1237, _left, _top, 0, fireAngle, 0);
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middle, 0, fireAngle, 0); // Middle
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middleTop, 0, fireAngle, 0); // MiddleTop
             //Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, _middleBottom, 0, fireAngle, 0); // MiddleBottom
@@ -733,8 +733,8 @@ namespace InfServer.Script.GameType_Eol
             circleMarkLocation = _top;
             while (circleMarkLocation < _bottom)
             {
-                Helpers.Player_RouteExplosion(_arena.Players, 2552, _left, circleMarkLocation, 0, fireAngle, 0);
-                Helpers.Player_RouteExplosion(_arena.Players, 2552, _right, circleMarkLocation, 0, fireAngle, 0);
+                Helpers.Player_RouteExplosion(_arena.Players, 1237, _left, circleMarkLocation, 0, fireAngle, 0);
+                Helpers.Player_RouteExplosion(_arena.Players, 1237, _right, circleMarkLocation, 0, fireAngle, 0);
                 circleMarkLocation += distanceBetweenCircleMarks;
             }
 
@@ -748,6 +748,7 @@ namespace InfServer.Script.GameType_Eol
             _tickEolGameStart = Environment.TickCount;
             _gameBegun = true;
             bbetweengames = false;
+            _baseScript.UpdateZoneTickers();
             //_arena.flagSpawn();
         }
 

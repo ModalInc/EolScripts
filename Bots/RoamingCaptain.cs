@@ -21,10 +21,10 @@ namespace InfServer.Script.GameType_Eol
         ///////////////////////////////////////////////////
         // Member variables
         ///////////////////////////////////////////////////
-        public Player owner;					//The headquarters we defend
         private Player targetEnemy;             //The enemy that is by the flag
         //private Vehicle vHq;                    //Our HQ
-        private int _stalkRadius = 75;
+        private int _stalkRadius = 250;
+        private int _flagRadius = 50;
         protected Script_Eol _baseScript;			//The Eol script
 
         private Random _rand = new Random(System.Environment.TickCount);
@@ -46,8 +46,18 @@ namespace InfServer.Script.GameType_Eol
         private int _tickLastRadarDot;
         private int _tickLastTarget;
 
+        private int _optimalDistance = 50;         //The optimal distance from the player we want to be
+        private int _optimalDistanceTolerance = 40; //The distance tolerance as we're moving back towards the player
+        private int _distanceTolerance = 120;       //The tolerance from the optimal distance we accept
+
+        private int _tickNextStrafeChange;          //The last time we changed strafe direction
+
+        private bool _bStrafeLeft;                  //Are we strafing left or right?
+        private bool _bChasing;						//Are we chasing the player back into optimal range?
+
         List<Arena.FlagState> flags;
         List<Arena.FlagState> enemyflags;
+        List<Arena.FlagState> capturedflags;
 
 
         private WeaponController _weaponClose;  //Our weapon for close range
@@ -68,6 +78,7 @@ namespace InfServer.Script.GameType_Eol
 
            flags = new List<Arena.FlagState>();
            enemyflags = new List<Arena.FlagState>();
+           capturedflags = new List<Arena.FlagState>();
 
             _seperation = (float)rnd.NextDouble();
             steering = _movement as SteeringController;
@@ -96,15 +107,8 @@ namespace InfServer.Script.GameType_Eol
         {
             int now = Environment.TickCount;
 
-            //Radar Dot
-            if (now - _tickLastRadarDot >= 900)
-            {
-                _tickLastRadarDot = now;
-                IEnumerable<Player> enemies = _arena.Players.Where(p => p._team != _team);
-                //Helpers.Player_RouteExplosion(_team.ActivePlayers, 1131, _state.positionX, _state.positionY, 0, 0, 0);
-                //Helpers.Player_RouteExplosion(enemies, 1130, _state.positionX, _state.positionY, 0, 0, 0);
-            }
-
+            //_movement.stop();
+            //steering.steerDelegate = null;
 
             //Dead? Do nothing
             if (IsDead)
@@ -117,24 +121,11 @@ namespace InfServer.Script.GameType_Eol
                 return base.poll();
             }
 
+            if (capturedflags.Count != 0) capturedflags.Clear();
 
-            //Do we have a flag to attack?
-            if (_arena._flags.Count() == 0)
-            {
-                kill(null);
-                bCondemned = true;
-                _baseScript.roamingCaptianBots.Remove(_team);
-                _baseScript.capRoamBots.Remove(_team);
-                _baseScript._currentRoamCaptains--;
-                return false;
-            }
+            capturedflags = _arena._flags.Values.OrderBy(f => f.team != null).ToList();
 
-            //Find out if our owner is gone and if he is destroy ourselves
-            if (owner == null && !_team._name.Contains("Bot Team -"))
-            {//Find a new owner if not a bot team
-                if (_team.ActivePlayerCount > 0)
-                    owner = _team.ActivePlayers.Last();
-                else
+            if (capturedflags.Count() == 0)
                 {
                     kill(null);
                     bCondemned = true;
@@ -143,7 +134,6 @@ namespace InfServer.Script.GameType_Eol
                     _baseScript._currentRoamCaptains--;
                     return false;
                 }
-            }
 
 
             if (_movement.bCollision && now - _tickLastCollision < 500)
@@ -158,93 +148,76 @@ namespace InfServer.Script.GameType_Eol
                 return base.poll();
             }
 
-            if (_arena._bGameRunning && now - _tickLastRoamCaptain < 500)
-            {
-                //Find out of we are suppose to be attacking anyone
-                if (targetEnemy == null || !isValidTarget(targetEnemy))
-                {  
-                    targetEnemy = getTargetPlayer();
-                    if (targetEnemy == null && _targetPoint == null) _targetPoint = pushToEnemyFlag();
+           //Find out of we are suppose to be attacking anyone
+            if (targetEnemy == null || !isValidTarget(targetEnemy))
+            {  
+                targetEnemy = getTargetPlayer();
+                if (targetEnemy == null)
+                {
+                    _targetPoint = pushToEnemyFlag();
                 }
-                _tickLastRoamCaptain = now;
             }
 
             //Do we have a target?
             if (targetEnemy != null)
             {//Yes
-                //_targetPoint = null;
-
-                //Go and attack them
-                bool bClearPath = Helpers.calcBresenhemsPredicate(_arena, _state.positionX, _state.positionY, targetEnemy._state.positionX, targetEnemy._state.positionY,
-                     delegate (LvlInfo.Tile t)
-                     {
-                         return !t.Blocked;
-                     }
-                 );
+                //Find out how far we are from enemy
                 double distance = Math.Pow((Math.Pow(_state.positionX - targetEnemy._state.positionX, 2) + Math.Pow(_state.positionY - targetEnemy._state.positionY, 2)) / 2, 0.5);
 
-                //Check how far they are to decide what weapon to use
-                if (distance < 50)
+                //If we are on top of it we just spawned and should be moved somehow
+                if (distance == 0)
+                {//does not work for warping a bot
+                    _state.positionX = Convert.ToInt16(_state.positionX + 45);
+                    _state.positionY = Convert.ToInt16(_state.positionY + 45);
+                }
+
+
+                if (distance <= 100)
                     _weapon = _weaponClose;
                 else
                     _weapon = _weaponFar;
 
-                if (bClearPath)
-                {	//Persue directly!
-                    steering.steerDelegate = steerForPersuePlayer;
-
-                    //Can we shoot?
-                    if (_weapon.ableToFire())
-                    {
-                        int aimResult = _weapon.getAimAngle(targetEnemy._state);
-
-                        if (_weapon.isAimed(aimResult))
-                        {	//Spot on! Fire?
-                            _itemUseID = _weapon.ItemID;
-                            _weapon.shotFired();
-                        }
-                        steering.bSkipAim = true;
-                        steering.angle = aimResult;
-                    }
-                    else
-                        steering.bSkipAim = false;
-                }
-                else //The path is not clear!
+                if (_weapon.ableToFire())
                 {
-                    //Does our path need to be updated?
-                    if (now - _tickLastPath > Script_Eol.c_defenseRoamPathUpdateInterval)
-                    {
-                        //Update it!
-                        _tickLastPath = int.MaxValue;
+                    int aimResult = _weapon.getAimAngle(targetEnemy._state);
 
-                        _arena._pathfinder.queueRequest(
-                            (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                            (short)(targetEnemy._state.positionX / 16), (short)(targetEnemy._state.positionY / 16),
-                            delegate (List<Vector3> path, int pathLength)
-                            {
-                                if (path != null)
-                                {
-                                    _path = path;
-                                    _pathTarget = 1;
-                                }
-                                _tickLastPath = now;
-                            }
-                        );
+                    if (_weapon.isAimed(aimResult))
+                    {   //Spot on! Fire?
+                        _itemUseID = _weapon.ItemID;
+                        _weapon.shotFired();
                     }
+
+                    steering.bSkipAim = true;
+                    steering.angle = aimResult;
+                }
+                else
+                {
+                    steering.bSkipAim = false;
                 }
 
-                //Navigate to him
-                if (_path == null)
-                    //If we can't find out way to him, just mindlessly walk in his direction for now
-                    steering.steerDelegate = steerForPersuePlayer;
+                if ((_bChasing && distance < (_optimalDistance + _distanceTolerance) &&
+                    distance > (_optimalDistance - _distanceTolerance))
+                    ||
+                    (!_bChasing && distance < (_optimalDistance + _optimalDistanceTolerance) &&
+                    distance > (_optimalDistance - _optimalDistanceTolerance)))
+                {   //We're in dueling range, and must no longer be chasing
+                    _bChasing = false;
+
+                }
                 else
-                    steering.steerDelegate = steerAlongPath;
+                    //We need to get in range!
+                    _bChasing = true;
+
+                if (distance > _optimalDistance)
+                    _movement.thrustForward();
+                else
+                    _movement.thrustBackward();
             }
             else if (_targetPoint != null)
             {
                 
                 //Maintain roaming bots
-                if (owner == null && _baseScript.roamBots.ContainsKey(_team) && _baseScript.roamBots[_team] < _baseScript._maxRoamPerTeam && now - _tickLastSpawn > 2000)
+                if (_baseScript.roamBots.ContainsKey(_team) && _baseScript.roamBots[_team] < _baseScript._maxRoamPerTeam && now - _tickLastSpawn > 15000)
                 {//Bot team 
                     _baseScript.addBotRoam(null, _state, _team);
                     _tickLastSpawn = now;
@@ -253,7 +226,7 @@ namespace InfServer.Script.GameType_Eol
                 double distance = (_state.position() - _targetPoint.position()).Length;
 
                 //Are we there yet?
-                if (distance < _stalkRadius)
+                if (distance < _flagRadius)
                 {
                     if (now - _tickLastPath > Script_Eol.c_defenseRoamPathUpdateInterval)
                     {   //Update it!
@@ -275,15 +248,12 @@ namespace InfServer.Script.GameType_Eol
                     }
                     //Navigate around
                     if (_path == null)
-                        steering.steerDelegate = steerForPersuePlayer;
+                        _targetPoint = pushToEnemyFlag();
                     else
                         steering.steerDelegate = steerAlongPath;
 
-                    if (now - _tickLastTarget > 4000)
-                        _targetPoint = null;
-
                 }
-                else if (distance >= _stalkRadius)
+                else if (distance >= _flagRadius)
                 {
                     if (now - _tickLastPath > Script_Eol.c_defenseRoamPathUpdateInterval)
                     {   //Update it!
@@ -305,11 +275,10 @@ namespace InfServer.Script.GameType_Eol
                     }
                     //Navigate around
                     if (_path == null)
-                        steering.steerDelegate = steerForPersuePlayer;
+                        _targetPoint = pushToEnemyFlag();
                     else
                         steering.steerDelegate = steerAlongPath;
                 }
-
             }
             //Handle normal functionality
             return base.poll();
@@ -346,7 +315,6 @@ namespace InfServer.Script.GameType_Eol
                 target.positionY = flags[_randFlag].posY;
 
                 return target;
-                _tickLastTarget = now;
             }
             else
             {
