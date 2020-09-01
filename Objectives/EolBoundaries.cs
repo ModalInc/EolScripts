@@ -36,6 +36,7 @@ namespace InfServer.Script.GameType_Eol
         public bool bTwoSector;
         public bool bAllSectors;
         public bool bbetweengames;
+        private int _boundarynotify = 21;
 
         public short _top;
         public short _bottom;
@@ -216,7 +217,6 @@ namespace InfServer.Script.GameType_Eol
                     whichSector();
                     _bBoundariesDrawn = true;
                 }
-                
             }
 
             if ((now - _drawnSector >= 4100) && _bBoundariesDrawn == true)
@@ -237,8 +237,22 @@ namespace InfServer.Script.GameType_Eol
                         CfgInfo.Terrain terrain = _arena.getTerrain(px, py);
                         if (px <= _topLeftx || py <= _topLefty || px >= _bottomRightx || py >= _bottomRighty)
                         {
+
+                            //Send it.
+
                             if (terrain.message != "Pioneer Station")
-                            { player.heal(oobEffect, player); }
+                            {
+                                player.heal(oobEffect, player);
+                                IEnumerable<Player> sorted = _arena.getPlayersInRange(player._state.positionX, player._state.positionY, 10);
+                                if (player._state.health == 1)
+                                    Helpers.Player_RouteExplosion(sorted, 1093, player._state.positionX, player._state.positionY, 0, 0, 0);
+                                if (now - _boundarynotify > 30)
+                                {
+                                    player.sendMessage(4, "&You have left the low radiation sectors, return to safety immediately! Your suit will not withstand these levels of radiation!");
+                                    _boundarynotify = now;
+                                }
+
+                            }
                         }
                         
                     }
@@ -287,6 +301,7 @@ namespace InfServer.Script.GameType_Eol
                     _bRight = aBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
+                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open"); //30
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -303,6 +318,7 @@ namespace InfServer.Script.GameType_Eol
                     _bRight = bBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
+                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open"); //30
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -319,6 +335,7 @@ namespace InfServer.Script.GameType_Eol
                     _bRight = cBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
+                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open"); //30
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -335,6 +352,7 @@ namespace InfServer.Script.GameType_Eol
                     _bRight = dBR;
                     Sectors(_tLeft, _bLeft, _tRight, _bRight);
                     _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " is open", _config.flag.victoryWarningBong);
+                    _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " is open"); //30
                     bOneSector = true;
                     bTwoSector = false;
                     bAllSectors = false;
@@ -364,6 +382,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = bBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -380,6 +399,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = cBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -396,6 +416,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -412,6 +433,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -433,6 +455,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = bBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -449,6 +472,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -465,6 +489,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = cBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -481,6 +506,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -505,6 +531,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = bBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -521,6 +548,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = cBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -537,6 +565,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -553,6 +582,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -574,6 +604,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = bBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -591,6 +622,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -607,6 +639,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = cBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder60 + " and " + sectUnder30 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -623,6 +656,7 @@ namespace InfServer.Script.GameType_Eol
                             _bRight = dBR;
                             Sectors(_tLeft, _bLeft, _tRight, _bRight);
                             _arena.sendArenaMessage("Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open", _config.flag.victoryWarningBong);
+                            _arena.setTicker(1, 3, 0, "Radiation warning! Only " + sectUnder30 + " and " + sectUnder60 + " are open");
                             bOneSector = false;
                             bTwoSector = true;
                             bAllSectors = false;
@@ -639,6 +673,7 @@ namespace InfServer.Script.GameType_Eol
                 Sectors(fTL, fBL, fTR, fBR);
                 _activeSectors.Add(allSector);
                 _arena.sendArenaMessage("All Sectors are currently open with low radiation levels", _config.flag.victoryWarningBong);
+                _arena.setTicker(1, 3, 0, "All Sectors are currently open with low radiation levels");
                 bOneSector = false;
                 bTwoSector = false;
                 bAllSectors = true;
@@ -741,14 +776,12 @@ namespace InfServer.Script.GameType_Eol
         }
         #endregion
 
-
         public void gameStart()
         {	//We've started!
             int now = Environment.TickCount;
             _tickEolGameStart = Environment.TickCount;
             _gameBegun = true;
             bbetweengames = false;
-            _baseScript.UpdateZoneTickers();
             //_arena.flagSpawn();
         }
 
@@ -760,6 +793,7 @@ namespace InfServer.Script.GameType_Eol
             Sectors(emptyp, emptyp, emptyp, emptyp);
             sectUnder30 = "";
             sectUnder60 = "";
+            _arena.setTicker(1, 3, 0, "No Sectors currently open");
             bbetweengames = true;
             _baseScript._bpylonsSpawned = false;
             //_arena.flagReset();
@@ -774,6 +808,7 @@ namespace InfServer.Script.GameType_Eol
             Sectors(emptyp, emptyp, emptyp, emptyp);
             sectUnder30 = "";
             sectUnder60 = "";
+            _arena.setTicker(1, 3, 0, "No Sectors currently open");
             bbetweengames = true;
             //_arena.flagReset();
             return true;

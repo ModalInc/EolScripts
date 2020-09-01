@@ -31,6 +31,8 @@ Flagging: Capture flags to earn points and experience for holding these every 30
 
 Roaming Bot teams: When flags are captured, Pioneer Station will send down Roaming Flag Captains who with a team for 10 attackers, roam from flag to flag attacking all those in their way.
 
+Roaming Aliens: These when spawned will roam and attack all. No exceptions. They just kill you!
+
 New map layout, extensive work has been done to the map to allow for population dependant play.
 
 The map is segregated into 4 sectors. 
@@ -40,6 +42,10 @@ Should the population surpass 60 players, all sectors will open. If you step int
 Added in a flagging points game. First team to 10000 accumilated flagging points win that game. The flags will then reset and can be recaptured to start again.
 
 Teams: Sizes are limited per population. Under 30, 6 Players per team. 30 to 60, 8 players per team. Over 60 10 players
+
+Points game: When there are more than 10 players, your team gets points every 1 min. This is multiplied by how many flags you have. First to 10000 wins a jackpot prize of cash, exp and points.
+
+
 
 ***********************************************
 

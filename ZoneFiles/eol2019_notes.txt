@@ -1,5 +1,110 @@
 Eol Pioneer Station
 
+~b~2Updates, August 24th 2020~2~b
+
+~bBot Changes~b
+Added AC bots to Base defenders
+Made Base defenders not die when base captain is slain
+
+~bPlayer Changes~b
+Removed HQ from turret chain, meaning no longer part of FCU's
+Removed limit of 4 vehicles from terraformers
+Made HQ HP show and 6000HP from 10000HP
+Made Neo GL Default with Conscript
+
+
+
+**----------------------------------------------------------------------------------**
+
+~b~2Updates, August 18th 2020~2~b
+
+~bBot Changes~b
+Bots got same coloured death animations to match running animation.
+Roaming Bots all nerfed from 3 to 2 Self Ignore. This goes accross all damage types.
+All bots now display their HP.
+Alien Chief and Roaming Captains now target players and both chase and fire at them again.
+
+Cleaned up and added extra checks for Alien chief pathfinding in code. This should help stop crashes(If it works like in testing)
+
+~bMap Changes~b
+A couple of physic and graphical fixes done on the map to help bots move around easier and tidy up missed physics in changes.
+
+~bPlayer Changes~b
+Sector specific categories added for Teleport Random use. That way they only work in the open zone. If you buy and use one for another zone, prepare to die.
+
+
+**----------------------------------------------------------------------------------**
+
+~b~2Updates, August 16th 2020~2~b
+
+Bots got Flak added to all three types Basing, Roaming ad Alien
+Added variety to roaming bots, now include AC etc weapons
+
+Added three new buildings to the map. Sector A, B and D
+
+Added 3 new flags per sector.
+
+Added roll vehicle of conscript to Packs and Boards. Working on out of sector changes to damage packs and boards correctly.
+All packs and boards have had their armor ignores and protections removed. They're now just accessories.
+
+GDR renamed and Schrapnel damage decreased, as a result this weapon is now nerfed to hell but still useful to conscripts.
+
+Removed instant one hit kill Masar from Aliens and gave them old NPC Masar.
+
+FCU and Converters now work as intended so Engineers can work harder.
+
+Upped mineral spawn instances from between 1-4 to 6 and increased amount per location to 40.
+
+Other smaller fixes and tweaks done but not remembered at the time of documenting. See if you can spot them.
+
+**----------------------------------------------------------------------------------**
+
+~b~2Updates, July 24th 2020~2~b
+
+Adjusted Bot kill radius for share of rewards to be 100 from 5
+Upped share reward from 5 to 10%
+
+Changed skill requirements of GRDPDR to Infantry | Drop Trooper | Conscript | Heavy Weapons | MPAC
+Nerfed GRDPDR damage by a further quarter, increased weight to 9KG and cost to 12500.
+
+Rewrote Roaming bots and Alien bots so they now roam better and more aggressive.
+
+Any player who tries to enter game with multiple classes (Due to previous temp fix) will be reset to conscript and given $15000
+
+
+**----------------------------------------------------------------------------------**
+
+~b~2Updates, July 07th 2020~2~b
+
+Adjusted flag timer messages to not spam.
+Adjusted distance Roaming Captains are triggered to attack players from 150 to 400.
+
+Added class/skill requirements to GRDPDR as Infantry | Squad Leader | Sergeant | Drop Trooper | Conscript
+Nerfed GRDPDR damage by half, increased weight to 8.5KG and cost to 10500.
+
+All skills should now be able to unspec, it will keep the base skill of the requirements.
+
+Updated map at P5 to stop Aliens from getting stuck on physics in the rocks.
+
+Added new Class Reset Skill. Simply purchase this to reset your skills and then select the class branch you wish to go down.
+
+Added Points rewards to Minor and Major static flags. Set at half the value of EXP.
+
+**----------------------------------------------------------------------------------**
+
+~b~2Updates, June 30th 2020~2~b
+
+Added warning message when leaving safety of the active sector.
+Added timer bubble for flag rewards with 5 minutes and 1 minute left messages. 10 minutes between rewards.
+
+Altered Headquarters to be able to be built near FCU in base.
+Made conscript armor able to be sold back to store.
+
+Adjusted Alien rewards to be higher. 3000 cash to kill Alien Chief. While reducing amor by 1/4.
+Doubled cash rewards for roaming attackers.
+
+**----------------------------------------------------------------------------------**
+
 ~b~2Updates, April 27th 2020~2~b
 
 Revision Notes:
@@ -9,9 +114,6 @@ Added in Conscript only armor
 
 
 New map layout, extensive work has been done to the map to allow for population dependant play. 
-
-
-
 
 **----------------------------------------------------------------------------------**
 
