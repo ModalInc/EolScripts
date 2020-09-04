@@ -122,54 +122,53 @@ namespace InfServer.Script.GameType_Eol
             if (_targetPoint == null)
                 _targetPoint = getTargetPoint();
 
-            //Are we there yet?
-            bool bClearPath = Helpers.calcBresenhemsPredicate(_arena,
-                    _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
-                    delegate (LvlInfo.Tile t)
-                    {
-                        return !t.Blocked;
-                    }
-                );
+            bool bClearPath = Helpers.calcBresenhemsPredicate(
+                   _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
+                   delegate (LvlInfo.Tile t)
+                   {
+                       return !t.Blocked;
+                   }
+               );
             if (bClearPath)
             {
-                //It's clear, let's steer towards it
-                roampos = new Vector3(((float)_targetPoint.positionX) / 100.0, ((float)_targetPoint.positionY) / 100.0, 0);
-
-                
-                steering.steerDelegate = steerForFollowOwner;
-
-                //_arena.sendArenaMessage(string.Format("$Pos1 {0} {1}", _targetPoint.positionX, _targetPoint.positionY));
-                
+                //Persue directly!
+                steering.steerDelegate = steerForSeek;
             }
             else
             {
-                //It's clear, let's steer towards it
-                roampos = new Vector3(((float)_targetPoint.positionX) / 100.0, ((float)_targetPoint.positionY) / 100.0, 0);
-               // _arena.sendArenaMessage(string.Format("$Pos2 {0} {1}", _targetPoint.positionX, _targetPoint.positionY));
                 //Does our path need to be updated?
                 if (now - _tickLastPath > c_pathUpdateInterval)
                 {
                     _arena._pathfinder.queueRequest(
-                                (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                                (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
-                                delegate (List<Vector3> path, int pathLength)
-                                {
-                                    if (path != null)
-                                    {
-                                        _path = path;
-                                        _pathTarget = 1;
-                                    }
+                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                               (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                               delegate (List<Vector3> path, int pathLength)
+                               {
+                                   if (path != null)
+                                   {   //Is the path too long?
+                                       if (pathLength > c_MaxPath)
+                                       {   //Destroy ourself and let another zombie take our place
+                                           //_path = null; Destroying Disasbled for now, may replace with a distance from enemy check
+                                           //destroy(true);
+                                           _path = path;
+                                           _pathTarget = 1;
+                                       }
+                                       else
+                                       {
+                                           _path = path;
+                                           _pathTarget = 1;
+                                       }
+                                   }
 
-                                    _tickLastPath = now;
-                                }
+                                   _tickLastPath = now;
+                               }
                     );
                 }
 
-                //Navigate to base
+                //Navigate to him
                 if (_path == null)
-                    //If we can't find our way to base, just mindlessly walk in its direction for now
-                    steering.steerDelegate = steerForFollowOwner;
-
+                    //If we can't find out way to him, just mindlessly walk in his direction for now
+                    steering.steerDelegate = steerForSeek;
                 else
                     steering.steerDelegate = steerAlongPath;
             }
@@ -185,40 +184,56 @@ namespace InfServer.Script.GameType_Eol
                 _targetPoint = getTargetHQ();
 
 
-            //Are we there yet?
-            if (Helpers.distanceTo(_targetPoint.positionX, _targetPoint.positionY, _state.positionX, _state.positionY) > 20)
-                steering.steerDelegate = steerForHQ;
+            bool bClearPath = Helpers.calcBresenhemsPredicate(
+                    _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
+                    delegate (LvlInfo.Tile t)
+                    {
+                        return !t.Blocked;
+                    }
+                );
+            if (bClearPath)
+            {
+                //Persue directly!
+                steering.steerDelegate = steerForSeek;
+            }
             else
             {
-                steering.freezeMovement(2000);
-            }
-
-            //Does our path need to be updated?
-            if (now - _tickLastPath > c_pathUpdateInterval)
+                //Does our path need to be updated?
+                if (now - _tickLastPath > c_pathUpdateInterval)
                 {
                     _arena._pathfinder.queueRequest(
-                                (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                                (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
-                                delegate (List<Vector3> path, int pathLength)
-                                {
-                                    if (path != null)
-                                    {
-                                        _path = path;
-                                        _pathTarget = 1;
-                                    }
+                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                               (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                               delegate (List<Vector3> path, int pathLength)
+                               {
+                                   if (path != null)
+                                   {   //Is the path too long?
+                                       if (pathLength > c_MaxPath)
+                                       {   //Destroy ourself and let another zombie take our place
+                                           //_path = null; Destroying Disasbled for now, may replace with a distance from enemy check
+                                           //destroy(true);
+                                           _path = path;
+                                           _pathTarget = 1;
+                                       }
+                                       else
+                                       {
+                                           _path = path;
+                                           _pathTarget = 1;
+                                       }
+                                   }
 
-                                    _tickLastPath = now;
-                                }
+                                   _tickLastPath = now;
+                               }
                     );
                 }
 
-            //Navigate to base
-            if (_path == null)
-                //If we can't find our way to base, just mindlessly walk in its direction for now
-                steering.steerDelegate = steerForHQ;
-            else
-                steering.steerDelegate = steerAlongPath;
-            
+                //Navigate to him
+                if (_path == null)
+                    //If we can't find out way to him, just mindlessly walk in his direction for now
+                    steering.steerDelegate = steerForSeek;
+                else
+                    steering.steerDelegate = steerAlongPath;
+            }
             _tickLastReturn = now;
         }
 
@@ -284,18 +299,7 @@ namespace InfServer.Script.GameType_Eol
             return target;
         }
 
-        public void createTargetVehicle(int id, int x_offset, int y_offset, Team botTeam, Helpers.ObjectState loc)
-        {
-            VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(id));
-            Helpers.ObjectState newState = new Protocol.Helpers.ObjectState();
-            newState.positionX = Convert.ToInt16(loc.positionX + x_offset);
-            newState.positionY = Convert.ToInt16(loc.positionY + y_offset);
-            newState.positionZ = loc.positionZ;
-            newState.yaw = loc.yaw;
 
-            _arena.newVehicle(vehicle, botTeam, null, newState);
-
-        }
 
         public class Action
         {

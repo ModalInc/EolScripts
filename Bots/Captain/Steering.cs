@@ -71,20 +71,30 @@ namespace InfServer.Script.GameType_Eol
         /// <summary>
         /// Keeps the bot around a specific player
         /// </summary>
-        public Vector3 steerForFollowOwner(InfantryVehicle vehicle)
+        public Vector3 steerForSeek(InfantryVehicle vehicle)
         {
-            Vector3 wander = vehicle.SteerForWander(10.5f);
-            Vector3 seek = vehicle.SteerForSeek(_targetPoint.position());
+            if (_targetPoint != null)
+                return Vector3.Zero;
 
-            return wander + (seek * 10.8f);
+            Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
+            Vector3 seekSteer = vehicle.SteerForSeek(_targetPoint.position());
+            _arena.sendArenaMessage(string.Format("Seek Cap {0}, {1}", _targetPoint.positionX, _targetPoint.positionY));
+            return (wanderSteer * 1.6f) + seekSteer;
+            
         }
 
         public Vector3 steerForHQ(InfantryVehicle vehicle)
         {
-            Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
-            Vector3 pursuitSteer = vehicle.SteerForPursuit(myvHq.Abstract, 0.2f);
+            if (myvHq == null)
+                return Vector3.Zero;
+            
 
-            return (wanderSteer * 1.6f) + pursuitSteer;
+                Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
+                Vector3 pursuitSteer = vehicle.SteerForPursuit(myvHq.Abstract, 0.2f);
+                _arena.sendArenaMessage(string.Format("HQ Cap {0}, {1}", myvHq._state.positionX, myvHq._state.positionY));
+
+                return (wanderSteer * 1.6f) + pursuitSteer;
+
         }
 
         /// <summary>

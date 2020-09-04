@@ -73,8 +73,13 @@ namespace InfServer.Script.GameType_Eol
         /// </summary>
         public Vector3 steerForFollowOwner(InfantryVehicle vehicle)
         {
-            Vector3 pursuitSteer = vehicle.SteerForPursuit(_targetLocation.Abstract, 0.2f);
-            return pursuitSteer;
+            if (_leader == null)
+                return Vector3.Zero;
+
+            Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
+            Vector3 pursuitSteer = vehicle.SteerForPursuit(_leader._baseVehicle.Abstract, 0.2f);
+
+            return (wanderSteer * 1.6f) + pursuitSteer;
         }
 
         /// <summary>

@@ -31,7 +31,8 @@ namespace InfServer.Script.GameType_Eol
         private Player _target;                     //The player we're currently stalking
         public Player owner;
         public Helpers.ObjectState _targetPoint;
-        public Vehicle _targetLocation;
+        private Vehicle _targetLocation;
+        private Vehicle _roamMarker;
         private Team _targetTeam;
         private Vehicle myvHq;
         public BotType type;

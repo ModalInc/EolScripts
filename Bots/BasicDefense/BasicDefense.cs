@@ -41,6 +41,7 @@ namespace InfServer.Script.GameType_Eol
         public Script_Eol _baseScript;
         public int _tickLastWander;
         protected int _tickLastCollision;
+        protected Vector3 roampos;
 
 
         private bool _bPatrolEnemy;
