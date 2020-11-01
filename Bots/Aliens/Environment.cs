@@ -72,7 +72,7 @@ namespace InfServer.Script.GameType_Eol
                 if (_arena.getTerrain(p._state.positionX, p._state.positionY).safety)
                     continue;
 
-                int distance = (int)(_state.position().Distance(p._state.position()) * 100);
+                int distance = (int)(_state.position().Distance(p._state.position()) * 500);
                 if (p.activeUtilities.Any(util => util != null && distance >= util.cloakDistance && util.cloakDistance != -1))
                     continue;
 

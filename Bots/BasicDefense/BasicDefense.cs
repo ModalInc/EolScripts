@@ -144,14 +144,14 @@ namespace InfServer.Script.GameType_Eol
             }
 
             //Find out if our captain died
-            /*if (!_baseScript.captainBots.ContainsKey(_team))
+            if (!_baseScript.captainBots.ContainsKey(_team))
             {
                 kill(null);
                 _baseScript.botCount[_team]--; //Signal to our captain we died
                 _baseScript.botCount[_team] = 0; //Signal to our captain we died
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
-            }*/
+            }
 
             //Do we have an HQ to defend?
             if (_baseScript._hqs[_team] == null)
@@ -174,7 +174,7 @@ namespace InfServer.Script.GameType_Eol
                 //Helpers.Player_RouteExplosion(enemies, 1130, _state.positionX, _state.positionY, 0, 0, 0);
             }
 
-            if (_movement.bCollision && now - _tickLastCollision < 300)
+            if (_movement.bCollision && now - _tickLastCollision < 500)
             {
                 steering.steerDelegate = delegate (InfantryVehicle vehicle)
                 {
