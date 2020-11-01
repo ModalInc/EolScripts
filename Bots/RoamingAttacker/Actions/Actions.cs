@@ -79,6 +79,10 @@ namespace InfServer.Script.GameType_Eol
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
                     {
+                        if (_target._state.positionZ < 10)
+                            _weapon = _weaponClose;
+                        else
+                            _weapon = _weaponFar;
 
                         int aimResult = _weapon.getAimAngle(_target._state);
 
@@ -122,6 +126,7 @@ namespace InfServer.Script.GameType_Eol
 
             if (distance <= 150)
             {
+
                 bool bClearPath = Helpers.calcBresenhemsPredicate(
                 _arena, _state.positionX, _state.positionY, _roamCapt._state.positionX, _roamCapt._state.positionY,
                 delegate (LvlInfo.Tile t)
@@ -138,7 +143,7 @@ namespace InfServer.Script.GameType_Eol
                 }
                 else
                 {
-                    if (now - _tickLastPath > c_pathUpdateInterval)
+                    if (now - _tickLastPath > 10000)
                     {   //Update it!
                         _tickLastPath = int.MaxValue;
 
@@ -171,6 +176,7 @@ namespace InfServer.Script.GameType_Eol
              //?
              //Find a clear path back
              //Get a list of all the roaming captains in the arena
+                
                 bool bClearPath = Helpers.calcBresenhemsPredicate(
                    _arena, _state.positionX, _state.positionY, _roamCapt._state.positionX, _roamCapt._state.positionY,
                    delegate (LvlInfo.Tile t)

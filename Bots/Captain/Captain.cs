@@ -46,12 +46,12 @@ namespace InfServer.Script.GameType_Eol
         public int _tickLastReturn;
         protected int _tickLastSpawn;               //Tick at which we spawned a roaming attacker bot
         protected int _tickLastCollision;
+        private WeaponController _weaponClose;  //Our weapon for close range
+        private WeaponController _weaponFar;    //Our weapon for anything that is not close range
 
         private bool _bPatrolEnemy;
         protected SteeringController steering;	//System for controlling the bot's steering
         private float _seperation;
-        private int _tickNextStrafeChange;          //The last time we changed strafe direction
-        private bool _bStrafeLeft;                  //Are we strafing left or right?
         private int _tickLastRadarDot;
         private Vector3 roampos;
 
@@ -66,8 +66,17 @@ namespace InfServer.Script.GameType_Eol
             _seperation = (float)rnd.NextDouble();
             steering = _movement as SteeringController;
             _rand = new Random();
+            //Our weapon to use when we are close to the enemy
+            _weaponClose = new WeaponController(_state, new WeaponController.WeaponSettings());
+            _weaponFar = new WeaponController(_state, new WeaponController.WeaponSettings());
+
+            //Equip our normal weapon
             if (type.InventoryItems[0] != 0)
-                _weapon.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+                _weaponFar.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+
+            //Setup our second weapon
+            if (type.InventoryItems[1] != 0)
+                _weaponClose.equip(AssetManager.Manager.getItemByID(type.InventoryItems[1]));
 
             _actionQueue = new List<Action>();
 
@@ -94,8 +103,6 @@ namespace InfServer.Script.GameType_Eol
             base.poll();
         }
 
-
-
         /// <summary>
         /// Allows the script to maintain itself
         /// </summary>
@@ -114,7 +121,12 @@ namespace InfServer.Script.GameType_Eol
                     myvHq = v;
                 }
             }
-            double distance = Math.Pow((Math.Pow(_state.positionX - myvHq._state.positionX, 2) + Math.Pow(_state.positionY - myvHq._state.positionY, 2)) / 2, 0.5);
+            //Check if an HQ was found, if not return to polling
+            if (myvHq == null)
+                return base.poll();
+            //double distance = Math.Pow((Math.Pow(_state.positionX - myvHq._state.positionX, 2) + Math.Pow(_state.positionY - myvHq._state.positionY, 2)) / 2, 0.5);
+
+            double distance = (_state.position() - myvHq._state.position()).Length;
             //Dead? Do nothing
             if (IsDead)
             {//Dead
@@ -159,7 +171,7 @@ namespace InfServer.Script.GameType_Eol
                 //Helpers.Player_RouteExplosion(enemies, 1130, _state.positionX, _state.positionY, 0, 0, 0);
             }
 
-            if (_movement.bCollision && now - _tickLastCollision < 350)
+            if (_movement.bCollision && now - _tickLastCollision < 1000)
             {
                 steering.steerDelegate = delegate (InfantryVehicle vehicle)
                 {
@@ -199,12 +211,20 @@ namespace InfServer.Script.GameType_Eol
                 if (_arena._bGameRunning)
                 {
                     if (distance < 300)
+                    {
                         patrolHQ(now);
-                    else
+                        _targetPoint = null;
+                    }
+                    else if (distance >= 300)
+                    {
                         ReturnToHQ(now);
+                        _targetPoint = null;
+                    }
+
                 }
 
             }
+
             //Handle normal functionality
             return base.poll();
         }
@@ -212,7 +232,7 @@ namespace InfServer.Script.GameType_Eol
         public void updatePath(int now)
         {
             //Does our path need to be updated?
-            if (now - _tickLastPath > c_pathUpdateInterval)
+            if (now - _tickLastPath > 10000)
             {   //Update it!
                 _tickLastPath = int.MaxValue;
 

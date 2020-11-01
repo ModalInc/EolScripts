@@ -494,7 +494,8 @@ namespace InfServer.Script.GameType_Eol
 
             _usedpylons = new Dictionary<int, pylonObject>();
             _lastPylon = null;
-            
+
+
             return true;
         }
 
@@ -552,6 +553,31 @@ namespace InfServer.Script.GameType_Eol
                     _lastFlagCheck = now;
                 }
             }
+
+            if(playing <= 15)
+            {
+                //Even out any private teams that are OVER our current limit
+                foreach (Team team in _arena.ActiveTeams)
+                {
+                    List<Player> playersRemoved = new List<Player>();
+
+                    //If they are within our parameter, ignore.
+                    if (team.ActivePlayerCount <= 2)
+                        continue;
+
+                    int numToRemove = team.ActivePlayerCount - _playersPerTeam;
+
+                    for (int i = 0; i < numToRemove; i++)
+                    {
+                        Player rndPlayer = team.ActivePlayers.PickRandom();
+                        if (rndPlayer == null)
+                            continue;
+
+                        pickTeam(rndPlayer);
+                        rndPlayer.sendMessage(0, "You've randomly been moved to a new team to keep teams even. Current team limit is 2");
+                    }
+                }
+            }
          
             if (_pointsGameGoing)
             {
@@ -569,19 +595,7 @@ namespace InfServer.Script.GameType_Eol
                 }
             }
 
-            /*if (_gameBegun)
-            {
-                List<Team> notactiveflags = _arena.Teams.Where(t => t.ActivePlayerCount == 0).ToList();
-                foreach (Team t in notactiveflags)
-                {
-                    foreach (Arena.FlagState fs in _arena._flags.Values.Where(f => f.team == t))
-                    {
-                        fs.TeamChange += "Bot Team - Titan Rebels";
-                    }
-                }
-            }*/
-
-
+         
             if (playing < 30) //30
             {
                 _maxEngineers = 1;
@@ -806,7 +820,6 @@ namespace InfServer.Script.GameType_Eol
                 Player owner = null;
                 if (hqs != null)
                 {
-
                     foreach (Vehicle hq in hqs.ToList())
                     {//Handle the captains
                         Helpers.ObjectState openPoint = new Helpers.ObjectState();
@@ -989,6 +1002,8 @@ namespace InfServer.Script.GameType_Eol
                                     team = botTeam2;
                                 else if (_hqs[botTeam3] == null)
                                     team = botTeam3;
+                                else
+                                    team = botTeam1;
 
                                 //Find the pylon we are about to destroy and mark it as nonexistent
                                 foreach (KeyValuePair<int, pylonObject> obj in _usedpylons)
@@ -1064,7 +1079,7 @@ namespace InfServer.Script.GameType_Eol
 
                                 #region bot turrets
 
-                                //_hq = true; //Mark it as existing
+                                hq = true; //Mark it as existing
                                 //_pylonLocations = _pylonLocation;
                                 //Create their HQ
                                 createVehicle(620, 0, 0, team, home); //Build our HQ which will spawn our captain
@@ -1408,7 +1423,7 @@ namespace InfServer.Script.GameType_Eol
                                         //   createVehicle(453, 35, -35, team, home);
                                         break;
 
-
+                                        _hqs.Create(team);
                                         _hqs[team].Bounty = 10000;
 
                                         _currentEngineers++;
@@ -1428,7 +1443,7 @@ namespace InfServer.Script.GameType_Eol
             #endregion
 
             #region Alien Spawning
-            /*if (now - _tickLastChief > _checkRoamingChief && _gameBegun == true)
+            if (now - _tickLastChief > _checkRoamingChief && _gameBegun == true)
             {
                 if (_bots == null)
                     _bots = new List<Bot>();
@@ -1472,7 +1487,7 @@ namespace InfServer.Script.GameType_Eol
 
                 }
                 _tickLastChief = now;
-            }*/
+            }
             #endregion
 
             #region Roaming Captain Spawning
@@ -1591,15 +1606,17 @@ namespace InfServer.Script.GameType_Eol
         //Creates a turrent, offsets are from HQ
         public void createVehicle(int id, int x_offset, int y_offset, Team botTeam, Vehicle homeloc)
         {
-            VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(id));
-            Helpers.ObjectState newState = new Protocol.Helpers.ObjectState();
-            newState.positionX = Convert.ToInt16(homeloc._state.positionX + x_offset);
-            newState.positionY = Convert.ToInt16(homeloc._state.positionY + y_offset);
-            newState.positionZ = homeloc._state.positionZ;
-            newState.yaw = homeloc._state.yaw;
+            if (homeloc != null && botTeam != null)
+            {
+                VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(id));
+                Helpers.ObjectState newState = new Protocol.Helpers.ObjectState();
+                newState.positionX = Convert.ToInt16(homeloc._state.positionX + x_offset);
+                newState.positionY = Convert.ToInt16(homeloc._state.positionY + y_offset);
+                newState.positionZ = homeloc._state.positionZ;
+                newState.yaw = homeloc._state.yaw;
 
-            _arena.newVehicle(vehicle, botTeam, null, newState);
-
+                _arena.newVehicle(vehicle, botTeam, null, newState);
+            }
         }
 
 
@@ -2630,7 +2647,7 @@ namespace InfServer.Script.GameType_Eol
 
                 //Format the message
                 string format = String.Format
-                    ("&Reward (Cash={0} Experience={1} Points={2}) Next reward in {3} minutes.",
+                    ("&Reward (Cash={0} Experience={1} Points={2}) Flags have been reset, Next reward in {3} minutes.",
                     cashReward, expReward, pointReward, 10);
 
                 //Send it.
@@ -2644,7 +2661,9 @@ namespace InfServer.Script.GameType_Eol
                     player.syncState();
                 }
 
-                _arena.setTicker(0, 0, 60 * 1000, "Next flag reward in : ");
+                _arena.setTicker(0, 0, 60 * 1000, "Flags have been reset, Next flag reward in : ");
+
+                _arena.flagReset();
                 _lastFlagReward = Environment.TickCount;
             }
         }
@@ -2882,6 +2901,8 @@ namespace InfServer.Script.GameType_Eol
         [Scripts.Event("Game.Start")]
         public bool gameStart()
         {   //We've started!
+            _arena.flagReset();
+            _arena.flagSpawn();
             _tickGameStart = Environment.TickCount;
             _tickKothGameStart = Environment.TickCount;
             _tickGameStarting = 0;
@@ -3003,6 +3024,8 @@ namespace InfServer.Script.GameType_Eol
         [Scripts.Event("Game.Reset")]
         public bool gameReset()
         {   //Game reset, perhaps start a new one
+            _arena.flagReset();
+            _arena.flagSpawn();
             _arena._bGameRunning = false;
             _kothGameRunning = false;
             _tickGameStart = 0;
@@ -3232,22 +3255,11 @@ namespace InfServer.Script.GameType_Eol
                     }
                 }
             }
-            if (command.ToLower().Equals("go"))
+            if (command.ToLower().Equals("arena"))
             {
                 player.sendMessage(0, "&No Private Arena are can be used in Eol: Pioneer Station");
                 return false;
             }
-
-            /*if (command.ToLower().Equals("team"))
-            {
-                int terrainNum = player._arena.getTerrainID(player._state.positionX, player._state.positionY);
-                if (terrainNum != 1)
-                {
-                    player.sendMessage(0, "&No team swapping outside of Pioneer Station(DropShip)");
-                    Log.write(TLog.Normal, String.Format("Cool" + terrainNum, player._alias));
-                    return false;
-                }
-            }*/
 
             return true;
         }

@@ -79,6 +79,10 @@ namespace InfServer.Script.GameType_Eol
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
                     {
+                        if (_target._state.positionZ < 10)
+                            _weapon = _weaponClose;
+                        else
+                            _weapon = _weaponFar;
 
                         int aimResult = _weapon.getAimAngle(_target._state);
 
@@ -106,117 +110,131 @@ namespace InfServer.Script.GameType_Eol
                     else
                         steering.steerDelegate = steerAlongPath;
                 }
-
-
             }
         }
 
-        public void pushToEnemyFlag(int now, short x, short y)
+        public void patrolChief(int now)
         {
 
             Double distance = Math.Pow((Math.Pow(_state.positionX - _roamChief._state.positionX, 2) + Math.Pow(_state.positionY - _roamChief._state.positionY, 2)) / 2, 0.5);
 
-            if (distance <= 99)
+            if (_targetPoint == null)
+                _targetPoint = getTargetPoint();
+
+            if (_targetPoint != null)
             {
-
                 bool bClearPath = Helpers.calcBresenhemsPredicate(
-                    _arena, _state.positionX, _state.positionY, x, y,
-                    delegate (LvlInfo.Tile t)
-                    {
-                        return !t.Blocked;
-                    }
-                );
+                       _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
+                       delegate (LvlInfo.Tile t)
+                       {
+                           return !t.Blocked;
+                       }
+                   );
                 if (bClearPath)
+                {
                     //Persue directly!
-                    steering.steerDelegate = steerForFollowOwner;
-
+                    steering.steerDelegate = steerForWalkabout;
+                }
                 else
                 {
+                    //Does our path need to be updated?
                     if (now - _tickLastPath > c_pathUpdateInterval)
-                    {   //Update it!
-                        _tickLastPath = int.MaxValue;
-
-                        _arena._pathfinder.queueRequest(
-                            (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                            (short)((_state.positionX + _rand.Next(-150, 150)) / 16), (short)((_state.positionY + _rand.Next(-150, 150)) / 16),
-                            delegate (List<Vector3> path, int pathLength)
-                            {
-                                if (path != null)
-                                {
-                                    _path = path;
-                                    _pathTarget = 1;
-                                }
-                                _tickLastPath = now;
-                            }
-                        );
-                    }
-
-                    //Navigate to base
-                    if (_path == null)
-                        //If we can't find our way to captain, just mindlessly walk in its direction for now
-                        steering.steerDelegate = steerForFollowOwner;
-                    else
-                        steering.steerDelegate = steerAlongPath;
-                }
-            }
-            else if(distance >= 100 && distance <= 1200)
-            {//Go back to captain
-             //Check again for enemies?
-             //?
-             //Find a clear path back
-             //Get a list of all the roaming captains in the arena
-                
-                bool bClearPath = Helpers.calcBresenhemsPredicate(
-                    _arena, _state.positionX, _state.positionY, x, y,
-                    delegate (LvlInfo.Tile t)
                     {
-                        return !t.Blocked;
-                    }
-                );
-                if (bClearPath)
-                    //Persue directly!
-                    steering.steerDelegate = steerForFollowOwner;
-
-                else
-                {//Find a new path to captain
-                 //Does our path need to be updated?
-                    if (now - _tickLastPath > c_pathUpdateInterval)
-                    {   //Update it!
-                        _tickLastPath = int.MaxValue;
-
                         _arena._pathfinder.queueRequest(
-                            (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                            (short)(x / 16), (short)(y / 16),
-                            delegate (List<Vector3> path, int pathLength)
-                            {
-                                if (path != null)
-                                {
-                                    _path = path;
-                                    _pathTarget = 1;
-                                }
-                                _tickLastPath = now;
-                            }
+                                   (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                   (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                                   delegate (List<Vector3> path, int pathLength)
+                                   {
+                                       if (path != null)
+                                       {
+                                           _path = path;
+                                           _pathTarget = 1;
+                                       }
+                                       _tickLastPath = now;
+                                   }
                         );
                     }
 
-                    //Navigate to base
+                    //Navigate to him
                     if (_path == null)
-                        //If we can't find our way to base, just mindlessly walk in its direction for now
-                        steering.steerDelegate = steerForFollowOwner;
+                        //If we can't find out way to him, just mindlessly walk in his direction for now
+                        steering.steerDelegate = steerForWalkabout;
                     else
                         steering.steerDelegate = steerAlongPath;
-
                 }
             }
-            else if(distance > 1200)
+        }
+
+        public void returntoChief(int now)
+        {
+
+            bool bClearPath = Helpers.calcBresenhemsPredicate(
+                   _arena, _state.positionX, _state.positionY, _roamChief._state.positionX, _roamChief._state.positionY,
+                   delegate (LvlInfo.Tile t)
+                   {
+                       return !t.Blocked;
+                   }
+               );
+            if (bClearPath)
             {
-                steering.steerDelegate = null; //Stop movements  
-                _baseScript.alienBots[_team]--; //Signal to our captain we died
-                if (_baseScript.alienBots[_team] < 0)
-                    _baseScript.alienBots[_team] = 0;
-                bCondemned = true; //Make sure the bot gets removed in polling
+                //Persue directly!
+                steering.steerDelegate = steerForChief;
             }
-            
+            else
+            {
+                //Does our path need to be updated?
+                if (now - _tickLastPath > c_pathUpdateInterval)
+                {
+                    _arena._pathfinder.queueRequest(
+                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                               (short)(_roamChief._state.positionX / 16), (short)(_roamChief._state.positionY / 16),
+                               delegate (List<Vector3> path, int pathLength)
+                               {
+                                   if (path != null)
+                                   {
+                                       _path = path;
+                                       _pathTarget = 1;
+                                   }
+                                   _tickLastPath = now;
+                               }
+                    );
+                }
+
+                //Navigate to him
+                if (_path == null)
+                    //If we can't find out way to him, just mindlessly walk in his direction for now
+                    steering.steerDelegate = steerForChief;
+                else
+                    steering.steerDelegate = steerAlongPath;
+            }
+        }
+
+        public Helpers.ObjectState getTargetPoint()
+        {
+            Helpers.ObjectState target = new Helpers.ObjectState();
+
+            int blockedAttempts = 30;
+            short pX;
+            short pY;
+            while (true)
+            {
+                pX = _roamChief._state.positionX;
+                pY = _roamChief._state.positionY;
+                Helpers.randomPositionInArea(_arena, 400, ref pX, ref pY);
+                if (_arena.getTile(pX, pY).Blocked)
+                {
+                    blockedAttempts--;
+                    if (blockedAttempts <= 0)
+                        //Consider the spawn to be blocked
+                        return null;
+                    continue;
+                }
+
+                target.positionX = pX;
+                target.positionY = pY;
+                break;
+            }
+            return target;
         }
 
         public class Action

@@ -76,6 +76,10 @@ namespace InfServer.Script.GameType_Eol
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
                     {
+                        if (_target._state.positionZ < 10)
+                            _weapon = _weaponClose;
+                        else
+                            _weapon = _weaponFar;
 
                         int aimResult = _weapon.getAimAngle(_target._state);
 
@@ -92,14 +96,6 @@ namespace InfServer.Script.GameType_Eol
                         steering.bSkipAim = false;
                         
                 }
-                else
-                {
-                    updatePath(now);
-
-                    steering.steerDelegate = steerAlongPath;
-                }
-
-
             }
         }
 
@@ -114,63 +110,61 @@ namespace InfServer.Script.GameType_Eol
                 _tickLastSpawn = now;
             }
 
-            if (now - _tickLastWander < 6000)
-                return;
-
             if (_targetPoint == null)
                 _targetPoint = getTargetPoint();
-                
 
-            //What is our distance to the target?
-            double distance = (_state.position() - _targetPoint.position()).Length;
+            if (_targetPoint != null)
+            {
+                double distance = Math.Pow((Math.Pow(_state.positionX - _targetPoint.positionX, 2) + Math.Pow(_state.positionY - _targetPoint.positionY, 2)) / 2, 0.5);
 
-            //Are we there yet?
-            if (distance < patrolDist)
-            {
-                _targetPoint = null;
-                _tickLastWander = now;
-                return;
-            }
-            bool bClearPath = Helpers.calcBresenhemsPredicate(
-                 _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
-                 delegate (LvlInfo.Tile t)
-                 {
-                     return !t.Blocked;
-                 }
-                  );
-            if (bClearPath)
-            {
-                steering.steerDelegate = steerForFollowOwner;
-            }
-            else
-            {
-                //Does our path need to be updated?
-                if (now - _tickLastPath > c_pathUpdateInterval)
+                if (distance < 50)
                 {
-                    _arena._pathfinder.queueRequest(
-                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                               (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
-                               delegate (List<Vector3> path, int pathLength)
-                               {
-                                   if (path != null)
-                                   {
-                                       _path = path;
-                                       _pathTarget = 1;
-                                   }
-
-                                   _tickLastPath = now;
-                               }
-                    );
+                    _targetPoint = null;
+                    return;
                 }
-
-                //Navigate to base
-                if (_path == null)
-                    //If we can't find our way to base, just mindlessly walk in its direction for now
-                    steering.steerDelegate = steerForFollowOwner;
                 else
-                    steering.steerDelegate = steerAlongPath;
+                {
+                    bool bClearPath = Helpers.calcBresenhemsPredicate(
+                         _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
+                         delegate (LvlInfo.Tile t)
+                         {
+                             return !t.Blocked;
+                         }
+                          );
+                    if (bClearPath)
+                    {
+                        steering.steerDelegate = steerForPoint;
+                    }
+                    else
+                    {
+                        //Does our path need to be updated?
+                        if (now - _tickLastPath > 10000)
+                        {
+                            _arena._pathfinder.queueRequest(
+                                       (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                       (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                                       delegate (List<Vector3> path, int pathLength)
+                                       {
+                                           if (path != null)
+                                           {
+                                               _path = path;
+                                               _pathTarget = 1;
+                                           }
+
+                                           _tickLastPath = now;
+                                       }
+                            );
+                        }
+
+                        //Navigate to base
+                        if (_path == null)
+                            //If we can't find our way to base, just mindlessly walk in its direction for now
+                            steering.steerDelegate = steerForPoint;
+                        else
+                            steering.steerDelegate = steerAlongPath;
+                    }
+                }
             }
-            _tickLastWander = now;
         }
 
         public Helpers.ObjectState getTargetPoint()

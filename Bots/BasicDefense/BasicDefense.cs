@@ -43,6 +43,8 @@ namespace InfServer.Script.GameType_Eol
         protected int _tickLastCollision;
         protected Vector3 roampos;
 
+        private WeaponController _weaponClose;  //Our weapon for close range
+        private WeaponController _weaponFar;    //Our weapon for anything that is not close range
 
         private bool _bPatrolEnemy;
         protected SteeringController steering;	//System for controlling the bot's steering
@@ -60,8 +62,18 @@ namespace InfServer.Script.GameType_Eol
             _seperation = (float)rnd.NextDouble();
             steering = _movement as SteeringController;
             _rand = new Random();
+            //Our weapon to use when we are close to the enemy
+            _weaponClose = new WeaponController(_state, new WeaponController.WeaponSettings());
+            _weaponFar = new WeaponController(_state, new WeaponController.WeaponSettings());
+
+            //Equip our normal weapon
             if (type.InventoryItems[0] != 0)
-                _weapon.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+                _weaponFar.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+
+            //Setup our second weapon
+            if (type.InventoryItems[1] != 0)
+                _weaponClose.equip(AssetManager.Manager.getItemByID(type.InventoryItems[1]));
+
 
             _actionQueue = new List<Action>();
 
@@ -95,11 +107,16 @@ namespace InfServer.Script.GameType_Eol
             foreach (Vehicle v in hqs)
             {
                 if (v._team == _team)
-                {//
+                {
                     vHq = v;
                 }
             }
-            double distance = Math.Pow((Math.Pow(_state.positionX - vHq._state.positionX, 2) + Math.Pow(_state.positionY - vHq._state.positionY, 2)) / 2, 0.5);
+            //Check if an HQ was found, if not return to polling
+            if (vHq == null)
+                return base.poll();
+
+            //double distance = Math.Pow((Math.Pow(_state.positionX - vHq._state.positionX, 2) + Math.Pow(_state.positionY - vHq._state.positionY, 2)) / 2, 0.5);
+            double distance = (_state.position() - vHq._state.position()).Length;
             //Dead? Do nothing
             if (IsDead)
             {
@@ -110,11 +127,6 @@ namespace InfServer.Script.GameType_Eol
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
             }
-
-
-            //Check if an HQ was found, if not return to polling
-            if (vHq == null)
-                return base.poll();
 
             //Find out if our owner is gone
             if (owner == null && !_team._name.Contains("Bot Team -"))
@@ -148,7 +160,7 @@ namespace InfServer.Script.GameType_Eol
                 bCondemned = true;
                 _baseScript.botCount[_team]--; //Signal to our captain we died
                 _baseScript.botCount[_team] = 0; //Signal to our captain we died
-                return false;
+                return base.poll();
             }
 
             int now = Environment.TickCount;
@@ -162,7 +174,7 @@ namespace InfServer.Script.GameType_Eol
                 //Helpers.Player_RouteExplosion(enemies, 1130, _state.positionX, _state.positionY, 0, 0, 0);
             }
 
-            if (_movement.bCollision && now - _tickLastCollision < 350)
+            if (_movement.bCollision && now - _tickLastCollision < 300)
             {
                 steering.steerDelegate = delegate (InfantryVehicle vehicle)
                 {
@@ -198,10 +210,16 @@ namespace InfServer.Script.GameType_Eol
             {
                 if (_arena._bGameRunning)
                 {
-                    if (distance < 300)
+                    if (distance < 50)
+                    {
                         patrolHQ(now);
-                    else if (distance >= 300 && distance < 1200)
+                        _targetPoint = null;
+                    }
+                    else if (distance >= 50 && distance < 1200)
+                    {
                         ReturnToHQ(now);
+                        _targetPoint = null;
+                    }
                     else if (distance >= 1200)
                     {
                         steering.steerDelegate = null; //Stop movements  
@@ -209,6 +227,7 @@ namespace InfServer.Script.GameType_Eol
                         if (_baseScript.botCount[_team] < 0)
                             _baseScript.botCount[_team] = 0;
                         bCondemned = true; //Make sure the bot gets removed in polling
+                        _targetPoint = null;
                     }
                 }
 
@@ -220,7 +239,7 @@ namespace InfServer.Script.GameType_Eol
         public void updatePath(int now)
         {
             //Does our path need to be updated?
-            if (now - _tickLastPath > c_pathUpdateInterval)
+            if (now - _tickLastPath > 10000)
             {   //Update it!
                 _tickLastPath = int.MaxValue;
 

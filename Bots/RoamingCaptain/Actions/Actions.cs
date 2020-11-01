@@ -79,6 +79,10 @@ namespace InfServer.Script.GameType_Eol
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
                     {
+                        if (_target._state.positionZ < 10)
+                            _weapon = _weaponClose;
+                        else
+                            _weapon = _weaponFar;
 
                         int aimResult = _weapon.getAimAngle(_target._state);
 
@@ -115,7 +119,7 @@ namespace InfServer.Script.GameType_Eol
         {
 
             //Maintain roaming bots
-            if (_baseScript.roamBots.ContainsKey(_team) && _baseScript.roamBots[_team] < _baseScript._maxRoamPerTeam && now - _tickLastSpawn > 15000)
+            if (_baseScript.capRoamBots.ContainsKey(_team) && _baseScript.roamBots.ContainsKey(_team) && _baseScript.roamBots[_team] < _baseScript._maxRoamPerTeam && now - _tickLastSpawn > 15000)
             {//Bot team 
                 _baseScript.addBotRoam(null, _state, _team);
                 _tickLastSpawn = now;
@@ -159,10 +163,8 @@ namespace InfServer.Script.GameType_Eol
             }
             else
             {
-
-
                 //Does our path need to be updated?
-                if (now - _tickLastPath > c_pathUpdateInterval)
+                if (now - _tickLastPath > 1000)
                 {
                     _arena._pathfinder.queueRequest(
                                (short)(_state.positionX / 16), (short)(_state.positionY / 16),

@@ -63,7 +63,7 @@ namespace InfServer.Script.GameType_Eol
             );
 
             Vector3 seperationSteer = vehicle.SteerForSeparation(_seperation, -0.707f, CaptainBots);
-            Vector3 pursuitSteer = vehicle.SteerForPursuit(_target._baseVehicle.Abstract, 0.2f);
+            Vector3 pursuitSteer = vehicle.SteerForPursuit(_target._baseVehicle.Abstract, 2.2f);
 
             return (seperationSteer * 2.3f) + pursuitSteer;
         }
@@ -71,29 +71,30 @@ namespace InfServer.Script.GameType_Eol
         /// <summary>
         /// Keeps the bot around a specific player
         /// </summary>
-        public Vector3 steerForSeek(InfantryVehicle vehicle)
+        public Vector3 steerForWalkabout(InfantryVehicle vehicle)
         {
-            if (_targetPoint != null)
+           if (_targetPoint == null)
                 return Vector3.Zero;
 
+            Vector3 pos = new Vector3(((float)_targetPoint.positionX) / 100.0, ((float)_targetPoint.positionY) / 100.0, 0);
+
             Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
-            Vector3 seekSteer = vehicle.SteerForSeek(_targetPoint.position());
-            _arena.sendArenaMessage(string.Format("Seek Cap {0}, {1}", _targetPoint.positionX, _targetPoint.positionY));
+            Vector3 seekSteer = vehicle.SteerForSeek(pos);
+           // Vector3 pursuitSteer = vehicle.SteerForPursuit(seekSteer, 0.2f);
+
             return (wanderSteer * 1.6f) + seekSteer;
-            
+
         }
 
         public Vector3 steerForHQ(InfantryVehicle vehicle)
         {
             if (myvHq == null)
                 return Vector3.Zero;
-            
 
-                Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
-                Vector3 pursuitSteer = vehicle.SteerForPursuit(myvHq.Abstract, 0.2f);
-                _arena.sendArenaMessage(string.Format("HQ Cap {0}, {1}", myvHq._state.positionX, myvHq._state.positionY));
+            Vector3 wanderSteer = vehicle.SteerForWander(0.5f);
+            Vector3 pursuitSteer = vehicle.SteerForPursuit(myvHq.Abstract, 0.2f);
 
-                return (wanderSteer * 1.6f) + pursuitSteer;
+            return (wanderSteer * 1.6f) + pursuitSteer;
 
         }
 

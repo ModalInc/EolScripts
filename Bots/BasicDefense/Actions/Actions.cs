@@ -45,8 +45,9 @@ namespace InfServer.Script.GameType_Eol
                         steering.steerDelegate = steerForPersuePlayer;
 
                     //Too short?
-                    else if (distance < runDist && _state.health <= 45)
+                    else if (distance < runDist && _state.health <= 35)
                     {
+                        steering.bSkipRotate = true;
                         bFleeing = true;
                         steering.steerDelegate = delegate (InfantryVehicle vehicle)
                         {
@@ -78,6 +79,10 @@ namespace InfServer.Script.GameType_Eol
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
                     {
+                        if (_target._state.positionZ < 10)
+                            _weapon = _weaponClose;
+                        else
+                            _weapon = _weaponFar;
 
                         int aimResult = _weapon.getAimAngle(_target._state);
 
@@ -115,13 +120,11 @@ namespace InfServer.Script.GameType_Eol
 
         public void patrolHQ(int now)
         {
-            if (now - _tickLastWander < 6000)
-                return;
-
             if (_targetPoint == null)
                 _targetPoint = getTargetPoint();
 
-            bool bClearPath = Helpers.calcBresenhemsPredicate(
+            bool bClearPath = false;
+            bClearPath = Helpers.calcBresenhemsPredicate(
                    _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
                    delegate (LvlInfo.Tile t)
                    {
@@ -131,12 +134,12 @@ namespace InfServer.Script.GameType_Eol
             if (bClearPath)
             {
                 //Persue directly!
-                steering.steerDelegate = steerForSeek;
+                steering.steerDelegate = steerForWalkabout;
             }
             else
             {
                 //Does our path need to be updated?
-                if (now - _tickLastPath > c_pathUpdateInterval)
+                if (now - _tickLastPath > 10000)
                 {
                     _arena._pathfinder.queueRequest(
                                (short)(_state.positionX / 16), (short)(_state.positionY / 16),
@@ -167,7 +170,7 @@ namespace InfServer.Script.GameType_Eol
                 //Navigate to him
                 if (_path == null)
                     //If we can't find out way to him, just mindlessly walk in his direction for now
-                    steering.steerDelegate = steerForSeek;
+                    steering.steerDelegate = steerForWalkabout;
                 else
                     steering.steerDelegate = steerAlongPath;
             }
@@ -176,13 +179,12 @@ namespace InfServer.Script.GameType_Eol
 
         public void ReturnToHQ(int now)
         {
-            if (now - _tickLastWander < 6000)
-                return;
 
             if (_targetPoint == null)
                 _targetPoint = getTargetHQ();
 
-            bool bClearPath = Helpers.calcBresenhemsPredicate(
+            bool bClearPath = false;
+            bClearPath = Helpers.calcBresenhemsPredicate(
                    _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
                    delegate (LvlInfo.Tile t)
                    {
@@ -192,12 +194,12 @@ namespace InfServer.Script.GameType_Eol
             if (bClearPath)
             {
                 //Persue directly!
-                steering.steerDelegate = steerForSeek;
+                steering.steerDelegate = steerForHQ;
             }
             else
             {
                 //Does our path need to be updated?
-                if (now - _tickLastPath > c_pathUpdateInterval)
+                if (now - _tickLastPath > 10000)
                 {
                     _arena._pathfinder.queueRequest(
                                (short)(_state.positionX / 16), (short)(_state.positionY / 16),
@@ -205,21 +207,10 @@ namespace InfServer.Script.GameType_Eol
                                delegate (List<Vector3> path, int pathLength)
                                {
                                    if (path != null)
-                                   {   //Is the path too long?
-                                       if (pathLength > c_MaxPath)
-                                       {   //Destroy ourself and let another zombie take our place
-                                           //_path = null; Destroying Disasbled for now, may replace with a distance from enemy check
-                                           //destroy(true);
-                                           _path = path;
-                                           _pathTarget = 1;
-                                       }
-                                       else
-                                       {
-                                           _path = path;
-                                           _pathTarget = 1;
-                                       }
+                                   {
+                                       _path = path;
+                                       _pathTarget = 1;
                                    }
-
                                    _tickLastPath = now;
                                }
                     );
@@ -228,11 +219,10 @@ namespace InfServer.Script.GameType_Eol
                 //Navigate to him
                 if (_path == null)
                     //If we can't find out way to him, just mindlessly walk in his direction for now
-                    steering.steerDelegate = steerForSeek;
+                    steering.steerDelegate = steerForHQ;
                 else
                     steering.steerDelegate = steerAlongPath;
             }
-            _tickLastWander = now;
         }
 
         public Helpers.ObjectState getTargetPoint()
@@ -280,7 +270,7 @@ namespace InfServer.Script.GameType_Eol
             {
                 pX = vHq._state.positionX;
                 pY = vHq._state.positionY;
-                Helpers.randomPositionInArea(_arena, 100, ref pX, ref pY);
+                //Helpers.randomPositionInArea(_arena, 10, ref pX, ref pY);
                 if (_arena.getTile(pX, pY).Blocked)
                 {
                     blockedAttempts--;

@@ -40,7 +40,8 @@ namespace InfServer.Script.GameType_Eol
         public Script_Eol _baseScript;
         public int _tickLastWander;
         protected int _tickLastCollision;
-
+        private WeaponController _weaponClose;  //Our weapon for close range
+        private WeaponController _weaponFar;    //Our weapon for anything that is not close range
 
         private bool _bPatrolEnemy;
         protected SteeringController steering;	//System for controlling the bot's steering
@@ -58,8 +59,17 @@ namespace InfServer.Script.GameType_Eol
             _seperation = (float)rnd.NextDouble();
             steering = _movement as SteeringController;
             _rand = new Random();
+            //Our weapon to use when we are close to the enemy
+            _weaponClose = new WeaponController(_state, new WeaponController.WeaponSettings());
+            _weaponFar = new WeaponController(_state, new WeaponController.WeaponSettings());
+
+            //Equip our normal weapon
             if (type.InventoryItems[0] != 0)
-                _weapon.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+                _weaponFar.equip(AssetManager.Manager.getItemByID(type.InventoryItems[0]));
+
+            //Setup our second weapon
+            if (type.InventoryItems[1] != 0)
+                _weaponClose.equip(AssetManager.Manager.getItemByID(type.InventoryItems[1]));
 
             _actionQueue = new List<Action>();
 
@@ -156,7 +166,7 @@ namespace InfServer.Script.GameType_Eol
                 //Helpers.Player_RouteExplosion(enemies, 1130, _state.positionX, _state.positionY, 0, 0, 0);
             }
 
-            if (_movement.bCollision && now - _tickLastCollision < 350)
+            if (_movement.bCollision && now - _tickLastCollision < 1000)
             {
                 steering.steerDelegate = delegate (InfantryVehicle vehicle)
                 {
@@ -193,6 +203,7 @@ namespace InfServer.Script.GameType_Eol
                 if (_arena._bGameRunning)
                 {
                     pushToEnemyFlag(now, x, y);
+                    _targetPoint = null;
                 }
 
             }

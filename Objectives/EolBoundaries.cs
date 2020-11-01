@@ -243,9 +243,6 @@ namespace InfServer.Script.GameType_Eol
                             if (terrain.message != "Pioneer Station")
                             {
                                 player.heal(oobEffect, player);
-                                IEnumerable<Player> sorted = _arena.getPlayersInRange(player._state.positionX, player._state.positionY, 10);
-                                if (player._state.health == 1)
-                                    Helpers.Player_RouteExplosion(sorted, 1093, player._state.positionX, player._state.positionY, 0, 0, 0);
                                 if (now - _boundarynotify > 30)
                                 {
                                     player.sendMessage(4, "&You have left the low radiation sectors, return to safety immediately! Your suit will not withstand these levels of radiation!");
