@@ -46,7 +46,7 @@ namespace InfServer.Script.GameType_Eol
                         steering.steerDelegate = steerForPersuePlayer;
 
                     //Too short?
-                    else if (distance < runDist && _state.health <= 65)
+                    else if (distance < runDist && _state.health <= 35)
                     {
                         bFleeing = true;
                         steering.steerDelegate = delegate (InfantryVehicle vehicle)
@@ -79,7 +79,7 @@ namespace InfServer.Script.GameType_Eol
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
                     {
-                        if (_target._state.positionZ < 10)
+                        if (_target._state.positionZ != _state.positionZ)
                             _weapon = _weaponClose;
                         else
                             _weapon = _weaponFar;

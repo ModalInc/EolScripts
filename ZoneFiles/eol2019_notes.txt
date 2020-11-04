@@ -1,5 +1,23 @@
 Eol Pioneer Station
 
+~b~2Updates, October 21st 2020~2~b
+
+~bBot Changes~b
+Made all bots carry flak as secondary for those on packs.
+Changed base defenders to not swarm as much.
+Fixed crashing issue with bots so they shouldn't cause crashes going forward.
+
+~bPlayer Changes~b
+
+Made HQ HP show and 5000HP from 6000HP, also nerfed to 75% instead of 100 across all protections.
+Couple of small tweaks on boundary and vehicles
+
+~bMap Changes~b
+Couple of new and extended bases, see minimap/large map for details in game, or just explore.
+Added physics out form map edge to stop bots spawning into nowhere
+
+**----------------------------------------------------------------------------------**
+
 ~b~2Updates, August 24th 2020~2~b
 
 ~bBot Changes~b

@@ -28,6 +28,7 @@ namespace InfServer.Script.GameType_Eol
         private CfgInfo _config;				//The zone config
         private Points _points;                 //Our points
         private Teams _tm;                      //Teams logic
+        private ZoneServer _server;
 
         //Headquarters
         public Headquarters _hqs;               //Our headquarter tracker
@@ -562,10 +563,10 @@ namespace InfServer.Script.GameType_Eol
                     List<Player> playersRemoved = new List<Player>();
 
                     //If they are within our parameter, ignore.
-                    if (team.ActivePlayerCount <= 2)
+                    if (team.ActivePlayerCount <= 1)
                         continue;
 
-                    int numToRemove = team.ActivePlayerCount - _playersPerTeam;
+                    int numToRemove = team.ActivePlayerCount - 1;
 
                     for (int i = 0; i < numToRemove; i++)
                     {
@@ -1079,7 +1080,7 @@ namespace InfServer.Script.GameType_Eol
 
                                 #region bot turrets
 
-                                hq = true; //Mark it as existing
+                                //hq = true; //Mark it as existing
                                 //_pylonLocations = _pylonLocation;
                                 //Create their HQ
                                 createVehicle(620, 0, 0, team, home); //Build our HQ which will spawn our captain
@@ -1571,7 +1572,7 @@ namespace InfServer.Script.GameType_Eol
 
         public void preNewSector()
         {
-            _arena.sendArenaMessage("Radiation Wind Change Warning! New Sectors in 90 Seconds get safe, You will be sent to Pioneer Station during sector change", _config.flag.victoryWarningBong);
+            _arena.sendArenaMessage("Radiation Wind Change Warning! New Sectors in 90 Seconds get safe, You will be sent to Pioneer Station before sector change", _config.flag.victoryWarningBong);
             _arena.setTicker(1, 1, 90 * 100, "Radiation Wind Change Warning! New Sectors in 90 Seconds: ",
             delegate ()
             {
@@ -1598,6 +1599,8 @@ namespace InfServer.Script.GameType_Eol
                 player.clearProjectiles();
             }
             _arena.gameEnd();
+            _server.recycle();
+            
         }
 
         #endregion
@@ -2664,6 +2667,7 @@ namespace InfServer.Script.GameType_Eol
                 _arena.setTicker(0, 0, 60 * 1000, "Flags have been reset, Next flag reward in : ");
 
                 _arena.flagReset();
+                _arena.flagSpawn();
                 _lastFlagReward = Environment.TickCount;
             }
         }
@@ -2938,7 +2942,7 @@ namespace InfServer.Script.GameType_Eol
             _gameBegun = true;
             _bbetweengames = false;
 
-            if (_arena.ActiveTeams.Count() >= 2 && !_pointsGameGoing) //count of teams needs to be 2. set to 1 for test and playing should be 10
+            if (_arena.ActiveTeams.Count() >= 10 && !_pointsGameGoing) //count of teams needs to be 2. set to 1 for test and playing should be 10
             {
                 int playing = _arena.PlayerCount;
                 if (playing >= 10)
@@ -3907,6 +3911,21 @@ namespace InfServer.Script.GameType_Eol
 
             return true;
         }
+
+        public void pickTeam(Player player)
+        {
+            List<Team> potentialTeams = _arena.ActiveTeams.Where(t => t._name.StartsWith("Public") && t.ActivePlayerCount < 1).ToList();
+
+            //Put him on a new Public Team
+            if (potentialTeams.Count == 0)
+            {
+                Team newTeam = _arena.PublicTeams.First(t => t._name.StartsWith("Public") && t.ActivePlayerCount == 0);
+                newTeam.addPlayer(player);
+            }
+            else
+                potentialTeams.First().addPlayer(player);
+        }
+
         #endregion
     }
 }

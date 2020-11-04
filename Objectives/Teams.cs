@@ -23,13 +23,13 @@ namespace InfServer.Script.GameType_Eol
         private Arena _arena;					//Pointer to our arena class
         private CfgInfo _config;                //The zone config
         public Script_Eol _baseScript;
-        
+
         public Teams(Arena arena, Script_Eol baseScript)
         {
             _arena = arena;
             _config = arena._server._zoneConfig;
             _baseScript = baseScript;
-            
+
         }
 
         public bool Poll(int now)
@@ -153,7 +153,7 @@ namespace InfServer.Script.GameType_Eol
         /// </summary>
 
         public void gameStart()
-        {	
+        {
 
         }
 
@@ -163,7 +163,7 @@ namespace InfServer.Script.GameType_Eol
         }
 
         public bool gameReset()
-        {	
+        {
             return true;
         }
     }
