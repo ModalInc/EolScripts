@@ -79,10 +79,8 @@ namespace InfServer.Script.GameType_Eol
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
                     {
-                        if (_target._state.positionZ != _state.positionZ)
-                            _weapon = _weaponClose;
-                        else
-                            _weapon = _weaponFar;
+                        _state.fireAngle = Helpers.computeLeadFireAngle(_state, _target._state, 10000 / 1000);
+                        _weapon = _weaponClose;
 
                         int aimResult = _weapon.getAimAngle(_target._state);
 

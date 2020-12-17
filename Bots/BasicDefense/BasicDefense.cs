@@ -213,12 +213,12 @@ namespace InfServer.Script.GameType_Eol
                     if (distance < 50)
                     {
                         patrolHQ(now);
-                        _targetPoint = null;
+                        //_targetPoint = null;
                     }
                     else if (distance >= 50 && distance < 1200)
                     {
                         ReturnToHQ(now);
-                        _targetPoint = null;
+                        //_targetPoint = null;
                     }
                     else if (distance >= 1200)
                     {

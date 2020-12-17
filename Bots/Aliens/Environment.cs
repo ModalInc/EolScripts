@@ -73,7 +73,7 @@ namespace InfServer.Script.GameType_Eol
                     continue;
 
                 int distance = (int)(_state.position().Distance(p._state.position()) * 500);
-                if (p.activeUtilities.Any(util => util != null && distance >= util.cloakDistance && util.cloakDistance != -1))
+                if (p.activeUtilities.Any(util => util != null && distance <= util.cloakDistance))
                     continue;
 
                 double dist = Helpers.distanceSquaredTo(_state, p._state);

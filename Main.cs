@@ -555,7 +555,7 @@ namespace InfServer.Script.GameType_Eol
                 }
             }
 
-            if(playing <= 15)
+            if(playing <= 5)
             {
                 //Even out any private teams that are OVER our current limit
                 foreach (Team team in _arena.ActiveTeams)
@@ -566,7 +566,7 @@ namespace InfServer.Script.GameType_Eol
                     if (team.ActivePlayerCount <= 1)
                         continue;
 
-                    int numToRemove = team.ActivePlayerCount - 1;
+                    int numToRemove = team.ActivePlayerCount - 2;
 
                     for (int i = 0; i < numToRemove; i++)
                     {
@@ -579,7 +579,31 @@ namespace InfServer.Script.GameType_Eol
                     }
                 }
             }
-         
+            else if (playing >= 6 && playing <= 15)
+            {
+                //Even out any private teams that are OVER our current limit
+                foreach (Team team in _arena.ActiveTeams)
+                {
+                    List<Player> playersRemoved = new List<Player>();
+
+                    //If they are within our parameter, ignore.
+                    if (team.ActivePlayerCount <= 1)
+                        continue;
+
+                    int numToRemove = team.ActivePlayerCount - 3;
+
+                    for (int i = 0; i < numToRemove; i++)
+                    {
+                        Player rndPlayer = team.ActivePlayers.PickRandom();
+                        if (rndPlayer == null)
+                            continue;
+
+                        pickTeam(rndPlayer);
+                        rndPlayer.sendMessage(0, "You've randomly been moved to a new team to keep teams even. Current team limit is 2");
+                    }
+                }
+            }
+
             if (_pointsGameGoing)
             {
                 List<Team> notactive = _arena.Teams.Where(t => t.ActivePlayerCount == 0).ToList();
@@ -600,8 +624,8 @@ namespace InfServer.Script.GameType_Eol
             if (playing < 30) //30
             {
                 _maxEngineers = 1;
-                _maxRoamCaptains = 2;//1
-                _maxRoamingBots = 20;
+                _maxRoamCaptains = 1;//1
+                _maxRoamingBots = 10;
                 _maxDefenseBots = 8;
                 _maxRoamChief = 1;
                 _maxRoamingAliens = 10;
@@ -609,8 +633,8 @@ namespace InfServer.Script.GameType_Eol
             if (playing >= 30 && playing < 60) //30
             {
                 _maxEngineers = 2;
-                _maxRoamCaptains = 3;//3
-                _maxRoamingBots = 30;//20
+                _maxRoamCaptains = 2;//3
+                _maxRoamingBots = 20;//20
                 _maxDefenseBots = 16;
                 _maxRoamChief = 2;
                 _maxRoamingAliens = 20;
@@ -618,7 +642,7 @@ namespace InfServer.Script.GameType_Eol
             if (playing >= 60)
             {
                 _maxEngineers = 3;
-                _maxRoamCaptains = 4;//3
+                _maxRoamCaptains = 3;//3
                 _maxRoamingBots = 40;//40
                 _maxDefenseBots = 24;
                 _maxRoamChief = 3;
@@ -819,72 +843,51 @@ namespace InfServer.Script.GameType_Eol
             {
                 IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _hqVehId);
                 Player owner = null;
+
                 if (hqs != null)
                 {
+                    Team team = null;
                     foreach (Vehicle hq in hqs.ToList())
                     {//Handle the captains
                         Helpers.ObjectState openPoint = new Helpers.ObjectState();
-                        
-                            Captain captain = null;
-                        if (captain == null)
-                        {//They don't have a captain
-                            if (_bots == null)
-                                _bots = new List<Bot>();
-                            int id = 0;
-                            //See if they have a captain for their HQ, if not spawn one
-                            if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam1) && hq._team == botTeam1)
-                            {//It's a bot team
-                                openPoint = findOpenWarpBot(_arena, (short)(hq._state.positionX), (short)(hq._state.positionY), 150);
 
-                                //Keep track of the engineers
-                                if (openPoint != null)
-                                {
-                                    id = 437;
-                                    captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam1, null, openPoint, this, null) as Captain;
-                                    captainBots.Add(botTeam1, 0);
-                                    _bots.Add(captain);
-                                    if (botCount.ContainsKey(botTeam1))
-                                        botCount[botTeam1] = 0;
-                                    else
-                                        botCount.Add(botTeam1, 0);
-                                }
-                            }
-                            else if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam2) && hq._team == botTeam2)
-                            {//It's a bot team
-                                openPoint = findOpenWarpBot(_arena, (short)(hq._state.positionX), (short)(hq._state.positionY), 150);
+                        if (_bots == null)
+                            _bots = new List<Bot>();
+                        Captain captain = null;
 
-                                //Keep track of the engineers
-                                if (openPoint != null)
-                                {
-                                    id = 415;
-                                    captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam2, null, openPoint, this, null) as Captain;
-                                    captainBots.Add(botTeam2, 0);
-                                    _bots.Add(captain);
-                                    if (botCount.ContainsKey(botTeam2))
-                                        botCount[botTeam2] = 0;
-                                    else
-                                        botCount.Add(botTeam2, 0);
-                                }
-                            }
-                            else if (owner == null && captainBots != null && !captainBots.ContainsKey(botTeam3) && hq._team == botTeam3)
-                            {//It's a bot team
-                                openPoint = findOpenWarpBot(_arena, (short)(hq._state.positionX), (short)(hq._state.positionY), 150);
+                        if (hq._team == botTeam1)
+                            team = botTeam1;
+                        else if (hq._team == botTeam2)
+                            team = botTeam2;
+                        else if (hq._team == botTeam3)
+                            team = botTeam3;
 
-                                //Keep track of the engineers
-                                if (openPoint != null)
-                                {
-                                    id = 443;
-                                    captain = _arena.newBot(typeof(Captain), (ushort)id, botTeam3, null, openPoint, this, null) as Captain;
-                                    captainBots.Add(botTeam3, 0);
-                                    _bots.Add(captain);
-                                    if (botCount.ContainsKey(botTeam3))
-                                        botCount[botTeam3] = 0;
-                                    else
-                                        botCount.Add(botTeam3, 0);
-                                }
+                        //See if they have a captain for their HQ, if not spawn one
+                        if (team != null && owner == null && captainBots != null && !captainBots.ContainsKey(team) && hq._team == team)
+                        {//It's a bot team
+                            openPoint = findOpenWarpBot(_arena, (short)(hq._state.positionX), (short)(hq._state.positionY), 150);
+
+                            //Keep track of the engineers
+                            if (openPoint != null)
+                            {
+                                int id = 437;
+                                captain = _arena.newBot(typeof(Captain), (ushort)id, team, null, openPoint, this, null) as Captain;
+                                _arena.sendArenaMessage("A HQ Captain has been deployed to from the orbiting Pioneer Station.");
+                                captainBots.Add(team, 0);
+                                _bots.Add(captain);
+                                if (botCount.ContainsKey(team))
+                                    botCount[team] = 0;
+                                else
+                                    botCount.Add(team, 0);
                             }
                         }
                     }
+
+                    if (team == null)
+                    {
+                        captainBots.Clear();
+                    }
+
                 }
                 _tickLastCaptain = now;
             }
@@ -1003,8 +1006,8 @@ namespace InfServer.Script.GameType_Eol
                                     team = botTeam2;
                                 else if (_hqs[botTeam3] == null)
                                     team = botTeam3;
-                                else
-                                    team = botTeam1;
+                                //else
+                                   // team = botTeam1;
 
                                 //Find the pylon we are about to destroy and mark it as nonexistent
                                 foreach (KeyValuePair<int, pylonObject> obj in _usedpylons)
@@ -1080,10 +1083,12 @@ namespace InfServer.Script.GameType_Eol
 
                                 #region bot turrets
 
-                                //hq = true; //Mark it as existing
-                                //_pylonLocations = _pylonLocation;
                                 //Create their HQ
                                 createVehicle(620, 0, 0, team, home); //Build our HQ which will spawn our captain
+                                _hqs.Create(team);
+                                _hqs[team].Bounty = 10000;
+                                _currentEngineers++;
+                                engineerBots.Add(team);
                                 _arena.sendArenaMessage("$A new Headquarters has been dispatched by Pioneer Station");
                                 _rand = new Random();
                                 int rand;
@@ -1423,12 +1428,6 @@ namespace InfServer.Script.GameType_Eol
                                         //   createVehicle(453, -35, 35, team, home);
                                         //   createVehicle(453, 35, -35, team, home);
                                         break;
-
-                                        _hqs.Create(team);
-                                        _hqs[team].Bounty = 10000;
-
-                                        _currentEngineers++;
-                                        engineerBots.Add(team);
 
                                 }
                                 #endregion
