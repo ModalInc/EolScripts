@@ -27,7 +27,7 @@ namespace InfServer.Script.GameType_Eol
         private Random _rand;
 
         private Player _target;                     //The player we're currently stalking
-        public Player _leader;
+        public Vehicle _Leader;
         public Helpers.ObjectState _targetPoint;
         private Team _targetTeam;
         public BotType type;
@@ -117,11 +117,9 @@ namespace InfServer.Script.GameType_Eol
                 return base.poll();
             }
 
-            if (capturedflags.Count != 0) capturedflags.Clear();
+            IEnumerable<Vehicle> points = _arena.Vehicles.Where(v => v._type.Id == 468);
 
-            capturedflags = _arena._flags.Values.OrderBy(f => f.team != null).ToList();
-
-            if (capturedflags.Count() == 0)
+            if (points.Count() == 0)
             {
                 kill(null);
                 bCondemned = true;
@@ -188,25 +186,36 @@ namespace InfServer.Script.GameType_Eol
 
         public void updatePath(int now)
         {
+            int queueCounter = _arena._pathfinder.queueCount();
             //Does our path need to be updated?
-            if (now - _tickLastPath > c_pathUpdateInterval)
+            if (now - _tickLastPath > 500)
             {   //Update it!
-                _tickLastPath = int.MaxValue;
+                if (queueCounter <= 25)
+                {
+                    _arena._pathfinder.queueRequest(
+                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                               (short)(_target._state.positionX / 16), (short)(_target._state.positionY / 16),
+                               delegate (List<Vector3> path, int pathLength)
+                               {
+                                   if (path != null)
+                                   {
+                                       _path = path;
+                                       _pathTarget = 1;
+                                   }
+                                   else
+                                   {
+                                       steering.steerDelegate = null;
+                                   }
 
-                _arena._pathfinder.queueRequest(
-                    (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                    (short)(_target._state.positionX / 16), (short)(_target._state.positionY / 16),
-                    delegate (List<Vector3> path, int pathLength)
-                    {
-                        if (path != null)
-                        {   
-                                _path = path;
-                                _pathTarget = 1;
-                        }
-
-                        _tickLastPath = now;
-                    }
-                );
+                               }
+                    );
+                }
+                else
+                {
+                    _path = null;
+                    steering.steerDelegate = null;
+                }
+                _tickLastPath = now;
             }
         }
     }

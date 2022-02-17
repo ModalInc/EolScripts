@@ -234,24 +234,29 @@ namespace InfServer.Script.GameType_Eol
         public void updatePath(int now)
         {
             //Does our path need to be updated?
-            if (now - _tickLastPath > c_pathUpdateInterval)
+            if (now - _tickLastPath > 700)
             {   //Update it!
-                _tickLastPath = int.MaxValue;
+                if (_arena._pathfinder.queueCount < 26)
+                {
+                    _arena._pathfinder.queueRequest(
+                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                               (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                               delegate (List<Vector3> path, int pathLength)
+                               {
+                                   if (path != null)
+                                   {
+                                       _path = path;
+                                       _pathTarget = 1;
+                                   }
+                                   else
+                                   {
+                                       steering.steerDelegate = null;
+                                   }
 
-                _arena._pathfinder.queueRequest(
-                    (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                    (short)(_target._state.positionX / 16), (short)(_target._state.positionY / 16),
-                    delegate (List<Vector3> path, int pathLength)
-                    {
-                        if (path != null)
-                        {   
-                                _path = path;
-                                _pathTarget = 1;
-                        }
-
-                        _tickLastPath = now;
-                    }
-                );
+                               }
+                    );
+                }
+                _tickLastPath = now;
             }
         }
     }

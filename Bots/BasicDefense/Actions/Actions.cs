@@ -86,7 +86,16 @@ namespace InfServer.Script.GameType_Eol
 
                         if (_weapon.isAimed(aimResult))
                         {   //Spot on! Fire?
-                            //if (_weapon.ItemID == 3057)
+                            if (_weapon.ItemID == 3057)
+                                _movement.freezeMovement(2000);
+
+                            if (_weapon.ItemID == 1430)
+                                _movement.freezeMovement(2000);
+
+                            if (_weapon.ItemID == 1422)
+                                _movement.freezeMovement(2000);
+
+
                             //steering.steerDelegate = null;
 
                             _itemUseID = _weapon.ItemID;
@@ -118,11 +127,12 @@ namespace InfServer.Script.GameType_Eol
 
         public void patrolHQ(int now)
         {
+            int queueCounter = _arena._pathfinder.queueCount();
             if (_targetPoint != null)
             {
                 double distance = (_state.position() - _targetPoint.position()).Length;
 
-                if (distance <= 10)
+                if (distance <= 30)
                     _targetPoint = null;
             }
 
@@ -145,32 +155,34 @@ namespace InfServer.Script.GameType_Eol
             else
             {
                 //Does our path need to be updated?
-                if (now - _tickLastPath > 10000)
+                if (now - _tickLastPath > 500)
                 {
-                    _arena._pathfinder.queueRequest(
-                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                               (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
-                               delegate (List<Vector3> path, int pathLength)
-                               {
-                                   if (path != null)
-                                   {   //Is the path too long?
-                                       if (pathLength > c_MaxPath)
-                                       {   //Destroy ourself and let another zombie take our place
-                                           //_path = null; Destroying Disasbled for now, may replace with a distance from enemy check
-                                           //destroy(true);
+                    if (queueCounter <= 25)
+                    {
+                        _arena._pathfinder.queueRequest(
+                                   (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                   (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                                   delegate (List<Vector3> path, int pathLength)
+                                   {
+                                       if (path != null)
+                                       {
                                            _path = path;
                                            _pathTarget = 1;
                                        }
                                        else
                                        {
-                                           _path = path;
-                                           _pathTarget = 1;
+                                           steering.steerDelegate = null;
                                        }
-                                   }
 
-                                   _tickLastPath = now;
-                               }
-                    );
+                                   }
+                        );
+                    }
+                    else
+                    {
+                        _path = null;
+                        steering.steerDelegate = null;
+                    }
+                    _tickLastPath = now;
                 }
 
                 //Navigate to him
@@ -185,11 +197,13 @@ namespace InfServer.Script.GameType_Eol
 
         public void ReturnToHQ(int now)
         {
+            int queueCounter = _arena._pathfinder.queueCount();
+
             if (_targetPoint != null)
             {
                 double distance = (_state.position() - _targetPoint.position()).Length;
 
-                if (distance <= 10)
+                if (distance <= 100)
                     _targetPoint = null;
             }
 
@@ -212,21 +226,34 @@ namespace InfServer.Script.GameType_Eol
             else
             {
                 //Does our path need to be updated?
-                if (now - _tickLastPath > 10000)
+                if (now - _tickLastPath > 500)
                 {
-                    _arena._pathfinder.queueRequest(
-                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                               (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
-                               delegate (List<Vector3> path, int pathLength)
-                               {
-                                   if (path != null)
+                    if (queueCounter <= 25)
+                    {
+                        _arena._pathfinder.queueRequest(
+                                   (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                   (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                                   delegate (List<Vector3> path, int pathLength)
                                    {
-                                       _path = path;
-                                       _pathTarget = 1;
+                                       if (path != null)
+                                       {
+                                           _path = path;
+                                           _pathTarget = 1;
+                                       }
+                                       else
+                                       {
+                                           steering.steerDelegate = null;
+                                       }
+
                                    }
-                                   _tickLastPath = now;
-                               }
-                    );
+                        );
+                    }
+                    else
+                    {
+                        _path = null;
+                        steering.steerDelegate = null;
+                    }
+                    _tickLastPath = now;
                 }
 
                 //Navigate to him
@@ -252,7 +279,7 @@ namespace InfServer.Script.GameType_Eol
             {
                 pX = vHq._state.positionX;
                 pY = vHq._state.positionY;
-                Helpers.randomPositionInArea(_arena, 1000, ref pX, ref pY);
+                Helpers.randomPositionInArea(_arena, 1500, ref pX, ref pY);
                 if (_arena.getTile(pX, pY).Blocked)
                 {
                     blockedAttempts--;
@@ -300,7 +327,7 @@ namespace InfServer.Script.GameType_Eol
             return target;
         }
 
-        public void createTargetVehicle(int id, int x_offset, int y_offset, Team botTeam, Helpers.ObjectState loc)
+        /*public void createTargetVehicle(int id, int x_offset, int y_offset, Team botTeam, Helpers.ObjectState loc)
         {
             VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(id));
             Helpers.ObjectState newState = new Protocol.Helpers.ObjectState();
@@ -311,7 +338,7 @@ namespace InfServer.Script.GameType_Eol
 
             _arena.newVehicle(vehicle, botTeam, null, newState);
 
-        }
+        }*/
 
         public class Action
         {

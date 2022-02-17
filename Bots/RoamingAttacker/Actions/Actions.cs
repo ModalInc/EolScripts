@@ -86,8 +86,9 @@ namespace InfServer.Script.GameType_Eol
 
                         if (_weapon.isAimed(aimResult))
                         {   //Spot on! Fire?
-                            //if (_weapon.ItemID == 3057)
-                                //steering.steerDelegate = null;
+                            if (_weapon.ItemID != 1514)
+                                _movement.freezeMovement(2000);
+                            //steering.steerDelegate = null;
 
                             _itemUseID = _weapon.ItemID;
                             _weapon.shotFired();
@@ -118,7 +119,7 @@ namespace InfServer.Script.GameType_Eol
 
         public void pushToEnemyFlag(int now, short x, short y)
         {
-            Random r1 = new Random();
+            int queueCounter = _arena._pathfinder.queueCount();
 
             Double distance = Math.Pow((Math.Pow(_state.positionX - _roamCapt._state.positionX, 2) + Math.Pow(_state.positionY - _roamCapt._state.positionY, 2)) / 2, 0.5);
 
@@ -141,23 +142,34 @@ namespace InfServer.Script.GameType_Eol
                 }
                 else
                 {
-                    if (now - _tickLastPath > 10000)
+                    if (now - _tickLastPath > 500)
                     {   //Update it!
-                        _tickLastPath = int.MaxValue;
+                        if (queueCounter <= 25)
+                        {
+                            _arena._pathfinder.queueRequest(
+                                       (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                       (short)(_roamCapt._state.positionX / 16), (short)(_roamCapt._state.positionY / 16),
+                                       delegate (List<Vector3> path, int pathLength)
+                                       {
+                                           if (path != null)
+                                           {
+                                               _path = path;
+                                               _pathTarget = 1;
+                                           }
+                                           else
+                                           {
+                                               steering.steerDelegate = null;
+                                           }
 
-                        _arena._pathfinder.queueRequest(
-                            (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                            (short)((_state.positionX + r1.Next(-150, 150)) / 16), (short)((_state.positionY + r1.Next(-150, 150)) / 16),
-                            delegate (List<Vector3> path, int pathLength)
-                            {
-                                if (path != null)
-                                {
-                                    _path = path;
-                                    _pathTarget = 1;
-                                }
-                                _tickLastPath = now;
-                            }
-                        );
+                                       }
+                            );
+                        }
+                        else
+                        {
+                            _path = null;
+                            steering.steerDelegate = null;
+                        }
+                        _tickLastPath = now;
                     }
 
                     //Navigate to base
@@ -168,7 +180,7 @@ namespace InfServer.Script.GameType_Eol
                         steering.steerDelegate = steerAlongPath;
                 }
             }
-            else if (distance >= 151 && distance <= 1200)
+            else if (distance >= 150 && distance <= 2000)
             {//Go back to captain
              //Check again for enemies?
              //?
@@ -193,23 +205,34 @@ namespace InfServer.Script.GameType_Eol
                 {
                     //Find a new path to captain
                     //Does our path need to be updated?
-                    if (now - _tickLastPath > c_pathUpdateInterval)
+                    if (now - _tickLastPath > 500)
                     {   //Update it!
-                        _tickLastPath = int.MaxValue;
+                        if (queueCounter <= 25)
+                        {
+                            _arena._pathfinder.queueRequest(
+                                       (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                       (short)(_roamCapt._state.positionX / 16), (short)(_roamCapt._state.positionY / 16),
+                                       delegate (List<Vector3> path, int pathLength)
+                                       {
+                                           if (path != null)
+                                           {
+                                               _path = path;
+                                               _pathTarget = 1;
+                                           }
+                                           else
+                                           {
+                                               steering.steerDelegate = null;
+                                           }
 
-                        _arena._pathfinder.queueRequest(
-                            (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                            (short)(x / 16), (short)(y / 16),
-                            delegate (List<Vector3> path, int pathLength)
-                            {
-                                if (path != null)
-                                {
-                                    _path = path;
-                                    _pathTarget = 1;
-                                }
-                                _tickLastPath = now;
-                            }
-                        );
+                                       }
+                            );
+                        }
+                        else
+                        {
+                            _path = null;
+                            steering.steerDelegate = null;
+                        }
+                        _tickLastPath = now;
                     }
 
                     //Navigate to base
@@ -220,7 +243,7 @@ namespace InfServer.Script.GameType_Eol
                         steering.steerDelegate = steerAlongPath;
                 }
             }
-            else if (distance > 1200)
+            else if (distance > 2000)
             {
                 steering.steerDelegate = null; //Stop movements  
                 _baseScript.roamBots[_team]--; //Signal to our captain we died

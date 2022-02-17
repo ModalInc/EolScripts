@@ -782,7 +782,7 @@ namespace InfServer.Script.GameType_Eol
             //_arena.flagSpawn();
         }
 
-        public bool gameEnd()
+        public bool boundarygameEnd()
         {
             _tickEolGameStart = 0;
             _bBoundariesDrawn = false;
@@ -797,7 +797,7 @@ namespace InfServer.Script.GameType_Eol
             return true;
         }
 
-        public bool gameReset()
+        public bool boundarygameReset()
         {	//Game reset, perhaps start a new one
             _tickEolGameStart = 0;
             _bBoundariesDrawn = false;

@@ -138,8 +138,8 @@ namespace InfServer.Script.GameType_Eol
                 else
                 {
                     kill(null);
-                    _baseScript.roamBots[_team]--; //Signal to our captain we died
-                    _baseScript.roamBots[_team] = 0; //Signal to our captain we died
+                    if (_baseScript.roamBots[_team] > 0) _baseScript.roamBots[_team]--; //Signal to our captain we died
+                    if (_baseScript.roamBots[_team] < 0) _baseScript.roamBots[_team] = 0; //Signal to our captain we died
                     bCondemned = true; //Make sure the bot gets removed in polling
                     return base.poll();
                 }
@@ -149,12 +149,23 @@ namespace InfServer.Script.GameType_Eol
             if (!_baseScript.capRoamBots.ContainsKey(_team))
             {
                 kill(null);
-                _baseScript.roamBots[_team]--; //Signal to our captain we died
-                _baseScript.roamBots[_team] = 0; //Signal to our captain we died
+                if (_baseScript.roamBots[_team] > 0) _baseScript.roamBots[_team]--; //Signal to our captain we died
+                if (_baseScript.roamBots[_team] < 0) _baseScript.roamBots[_team] = 0; //Signal to our captain we died
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
             }
-            
+
+            IEnumerable<Vehicle> points = _arena.Vehicles.Where(v => v._type.Id == 468);
+
+            if (points.Count() == 0)
+            {
+                kill(null);
+                if (_baseScript.roamBots[_team] > 0) _baseScript.roamBots[_team]--; //Signal to our captain we died
+                if (_baseScript.roamBots[_team] < 0) _baseScript.roamBots[_team] = 0; //Signal to our captain we died
+                bCondemned = true; //Make sure the bot gets removed in polling
+                return base.poll();
+            }
+
             int now = Environment.TickCount;
 
             //Radar Dot
@@ -203,7 +214,7 @@ namespace InfServer.Script.GameType_Eol
                 if (_arena._bGameRunning)
                 {
                     pushToEnemyFlag(now, x, y);
-                    _targetPoint = null;
+                    //_targetPoint = null;
                 }
 
             }
@@ -213,25 +224,36 @@ namespace InfServer.Script.GameType_Eol
 
         public void updatePath(int now)
         {
+            int queueCounter = _arena._pathfinder.queueCount();
             //Does our path need to be updated?
-            if (now - _tickLastPath > c_pathUpdateInterval)
+            if (now - _tickLastPath > 500)
             {   //Update it!
-                _tickLastPath = int.MaxValue;
+                if (queueCounter <= 25)
+                {
+                    _arena._pathfinder.queueRequest(
+                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                               (short)(_target._state.positionX / 16), (short)(_target._state.positionY / 16),
+                               delegate (List<Vector3> path, int pathLength)
+                               {
+                                   if (path != null)
+                                   {
+                                       _path = path;
+                                       _pathTarget = 1;
+                                   }
+                                   else
+                                   {
+                                       steering.steerDelegate = null;
+                                   }
 
-                _arena._pathfinder.queueRequest(
-                    (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                    (short)(_target._state.positionX / 16), (short)(_target._state.positionY / 16),
-                    delegate (List<Vector3> path, int pathLength)
-                    {
-                        if (path != null)
-                        {   
-                                _path = path;
-                                _pathTarget = 1;
-                        }
-
-                        _tickLastPath = now;
-                    }
-                );
+                               }
+                    );
+                }
+                else
+                {
+                    _path = null;
+                    steering.steerDelegate = null;
+                }
+                _tickLastPath = now;
             }
         }
     }

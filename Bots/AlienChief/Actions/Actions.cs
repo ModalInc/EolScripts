@@ -136,22 +136,28 @@ namespace InfServer.Script.GameType_Eol
                     else
                     {
                         //Does our path need to be updated?
-                        if (now - _tickLastPath > 10000)
+                        if (now - _tickLastPath > 700)
                         {
-                            _arena._pathfinder.queueRequest(
-                                       (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                                       (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
-                                       delegate (List<Vector3> path, int pathLength)
-                                       {
-                                           if (path != null)
+                            if (_arena._pathfinder.queueCount < 26) {
+                                _arena._pathfinder.queueRequest(
+                                           (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                           (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                                           delegate (List<Vector3> path, int pathLength)
                                            {
-                                               _path = path;
-                                               _pathTarget = 1;
+                                               if (path != null)
+                                               {
+                                                   _path = path;
+                                                   _pathTarget = 1;
+                                               }
+                                               else
+                                               {
+                                                   steering.steerDelegate = null;
+                                               }
+                                               
                                            }
-
-                                           _tickLastPath = now;
-                                       }
-                            );
+                                );
+                            }
+                            _tickLastPath = now;
                         }
 
                         //Navigate to base
@@ -181,7 +187,7 @@ namespace InfServer.Script.GameType_Eol
 
             while (true)
             {
-                Helpers.randomPositionInArea(_arena, 1000, ref postarget.positionX, ref postarget.positionY);
+                Helpers.randomPositionInArea(_arena, 1500, ref postarget.positionX, ref postarget.positionY);
                 if (_arena.getTile(postarget.positionX, postarget.positionY).Blocked)
                 {
                     blockedAttempts--;

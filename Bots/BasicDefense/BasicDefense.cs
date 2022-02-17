@@ -128,6 +128,11 @@ namespace InfServer.Script.GameType_Eol
                 return base.poll();
             }
 
+
+            //Check if an HQ was found, if not return to polling
+            if (vHq == null)
+                return base.poll();
+
             //Find out if our owner is gone
             if (owner == null && !_team._name.Contains("Bot Team -"))
             {//Find a new owner if not a bot team
@@ -137,7 +142,7 @@ namespace InfServer.Script.GameType_Eol
                 {
                     kill(null);
                     _baseScript.botCount[_team]--; //Signal to our captain we died
-                    _baseScript.botCount[_team] = 0; //Signal to our captain we died
+                    if (_baseScript.botCount[_team] < 0) _baseScript.botCount[_team] = 0; //Signal to our captain we died
                     bCondemned = true; //Make sure the bot gets removed in polling
                     return base.poll();
                 }
@@ -148,7 +153,7 @@ namespace InfServer.Script.GameType_Eol
             {
                 kill(null);
                 _baseScript.botCount[_team]--; //Signal to our captain we died
-                _baseScript.botCount[_team] = 0; //Signal to our captain we died
+                if (_baseScript.botCount[_team] < 0) _baseScript.botCount[_team] = 0; //Signal to our captain we died
                 bCondemned = true; //Make sure the bot gets removed in polling
                 return base.poll();
             }
@@ -159,8 +164,8 @@ namespace InfServer.Script.GameType_Eol
                 kill(null);
                 bCondemned = true;
                 _baseScript.botCount[_team]--; //Signal to our captain we died
-                _baseScript.botCount[_team] = 0; //Signal to our captain we died
-                return base.poll();
+                if (_baseScript.botCount[_team] < 0) _baseScript.botCount[_team] = 0; //Signal to our captain we died
+                return false;
             }
 
             int now = Environment.TickCount;
@@ -210,17 +215,17 @@ namespace InfServer.Script.GameType_Eol
             {
                 if (_arena._bGameRunning)
                 {
-                    if (distance < 50)
+                    if (distance < 100)
                     {
                         patrolHQ(now);
                         //_targetPoint = null;
                     }
-                    else if (distance >= 50 && distance < 1200)
+                    else if (distance >= 100 && distance < 1500)
                     {
                         ReturnToHQ(now);
                         //_targetPoint = null;
                     }
-                    else if (distance >= 1200)
+                    else if (distance >= 1500)
                     {
                         steering.steerDelegate = null; //Stop movements  
                         _baseScript.botCount[_team]--; //Signal to our captain we died
@@ -238,25 +243,36 @@ namespace InfServer.Script.GameType_Eol
 
         public void updatePath(int now)
         {
+            int queueCounter = _arena._pathfinder.queueCount();
             //Does our path need to be updated?
-            if (now - _tickLastPath > 10000)
+            if (now - _tickLastPath > 500)
             {   //Update it!
-                _tickLastPath = int.MaxValue;
+                if (queueCounter <= 25)
+                {
+                    _arena._pathfinder.queueRequest(
+                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                               (short)(_target._state.positionX / 16), (short)(_target._state.positionY / 16),
+                               delegate (List<Vector3> path, int pathLength)
+                               {
+                                   if (path != null)
+                                   {
+                                       _path = path;
+                                       _pathTarget = 1;
+                                   }
+                                   else
+                                   {
+                                       steering.steerDelegate = null;
+                                   }
 
-                _arena._pathfinder.queueRequest(
-                    (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                    (short)(_target._state.positionX / 16), (short)(_target._state.positionY / 16),
-                    delegate (List<Vector3> path, int pathLength)
-                    {
-                        if (path != null)
-                        {   
-                                _path = path;
-                                _pathTarget = 1;
-                        }
-
-                        _tickLastPath = now;
-                    }
-                );
+                               }
+                    );
+                }
+                else
+                {
+                    _path = null;
+                    steering.steerDelegate = null;
+                }
+                _tickLastPath = now;
             }
         }
     }

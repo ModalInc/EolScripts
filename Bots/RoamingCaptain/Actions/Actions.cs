@@ -72,9 +72,7 @@ namespace InfServer.Script.GameType_Eol
                     //Just right
                     else
                         steering.steerDelegate = null;
-                    
-
-                        
+                   
 
                     //Can we shoot?
                     if (!bFleeing && _weapon.ableToFire() && distance < fireDist)
@@ -115,7 +113,7 @@ namespace InfServer.Script.GameType_Eol
 
         public void pushToEnemyFlag(int now)
         {
-
+            int queueCounter = _arena._pathfinder.queueCount();
             //Maintain roaming bots
             if (_baseScript.capRoamBots.ContainsKey(_team) && _baseScript.roamBots.ContainsKey(_team) && _baseScript.roamBots[_team] < _baseScript._maxRoamPerTeam && now - _tickLastSpawn > 15000)
             {//Bot team 
@@ -123,80 +121,130 @@ namespace InfServer.Script.GameType_Eol
                 _tickLastSpawn = now;
             }
 
-            Arena.FlagState targetFlag;
-            List<Arena.FlagState> enemyflags = new List<Arena.FlagState>();
-            List<Arena.FlagState> flags = new List<Arena.FlagState>();
+            IEnumerable<Vehicle> hps = _arena.Vehicles.Where(v => v._type.Id == 468);
 
-            if (flags.Count() > 0)
-                flags.Clear();
-
-            if (enemyflags.Count() > 0)
-                enemyflags.Clear();
-
-
-            enemyflags = _arena._flags.Values.OrderBy(f => f.posX).ToList();
-            flags = enemyflags.Where(f => f.posX >= _baseScript._minX && f.posX <= _baseScript._maxX && f.posY >= _baseScript._minY && f.posY <= _baseScript._maxY).ToList();
-
-            int count = flags.Count;
-
-            Random r = new Random();
-            int _randFlag = r.Next(0, count);
-            targetFlag = flags[_randFlag];
-
-            Helpers.ObjectState target = new Helpers.ObjectState();
-            target.positionX = targetFlag.posX;
-            target.positionY = targetFlag.posY;
-
-            bool bClearPath = Helpers.calcBresenhemsPredicate(
-                   _arena, _state.positionX, _state.positionY, target.positionX, target.positionY,
-                   delegate (LvlInfo.Tile t)
-                   {
-                       return !t.Blocked;
-                   }
-               );
-            if (bClearPath)
+            if (hps.Count() >= 1)
             {
-                //Persue directly!
-                steering.steerDelegate = steerForFollowOwner;
-            }
-            else
-            {
-                //Does our path need to be updated?
-                if (now - _tickLastPath > 1000)
+                Helpers.ObjectState target = new Helpers.ObjectState();
+                target.positionX = hps.FirstOrDefault()._state.positionX;
+                target.positionY = hps.FirstOrDefault()._state.positionY;
+
+
+                Double dis = Math.Pow((Math.Pow(_state.positionX - target.positionX, 2) + Math.Pow(_state.positionY - target.positionY, 2)) / 2, 0.5);
+
+                if (dis < 100)
                 {
-                    _arena._pathfinder.queueRequest(
-                               (short)(_state.positionX / 16), (short)(_state.positionY / 16),
-                               (short)(target.positionX / 16), (short)(target.positionY / 16),
-                               delegate (List<Vector3> path, int pathLength)
-                               {
-                                   if (path != null)
-                                   {   //Is the path too long?
-                                       if (pathLength > c_MaxPath)
-                                       {   //Destroy ourself and let another zombie take our place
-                                           //_path = null; Destroying Disasbled for now, may replace with a distance from enemy check
-                                           //destroy(true);
-                                           _path = path;
-                                           _pathTarget = 1;
-                                       }
-                                       else
-                                       {
-                                           _path = path;
-                                           _pathTarget = 1;
-                                       }
-                                   }
+                    _targetPoint = getTargetPoint();
+                }
+                else
+                {
+                    _targetPoint = getHPoint();
+                }
+                                 
 
-                                   _tickLastPath = now;
-                               }
-                    );
+                bool bClearPath = Helpers.calcBresenhemsPredicate(
+                       _arena, _state.positionX, _state.positionY, _targetPoint.positionX, _targetPoint.positionY,
+                       delegate (LvlInfo.Tile t)
+                       {
+                           return !t.Blocked;
+                       }
+                   );
+                if (bClearPath)
+                {
+                    //Persue directly!
+                    steering.steerDelegate = steerForFollowOwner;
+                }
+                else
+                {
+                    //Does our path need to be updated?
+                    if (now - _tickLastPath > 500)
+                    {
+                        if (queueCounter <= 25)
+                        {
+                            _arena._pathfinder.queueRequest(
+                                       (short)(_state.positionX / 16), (short)(_state.positionY / 16),
+                                       (short)(_targetPoint.positionX / 16), (short)(_targetPoint.positionY / 16),
+                                       delegate (List<Vector3> path, int pathLength)
+                                       {
+                                           if (path != null)
+                                           {
+                                               _path = path;
+                                               _pathTarget = 1;
+                                           }
+                                           else
+                                           {
+                                               steering.steerDelegate = null;
+                                           }
+
+                                       }
+                            );
+                        }
+                        else
+                        {
+                            _path = null;
+                            steering.steerDelegate = null;
+                        }
+                        _tickLastPath = now;
+                    }
+
+                    //Navigate to him
+                    if (_path == null)
+                        //If we can't find out way to him, just mindlessly walk in his direction for now
+                        steering.steerDelegate = steerForFollowOwner;
+                    else
+                        steering.steerDelegate = steerAlongPath;
+                }
+            }
+        }
+
+        public Helpers.ObjectState getTargetPoint()
+        {
+            Helpers.ObjectState target = new Helpers.ObjectState();
+
+            int blockedAttempts = 30;
+            short pX;
+            short pY;
+            while (true)
+            {
+                IEnumerable<Vehicle> hps = _arena.Vehicles.Where(v => v._type.Id == 468);
+                pX = hps.FirstOrDefault()._state.positionX;
+                pY = hps.FirstOrDefault()._state.positionY;
+
+                Helpers.randomPositionInArea(_arena, 2000, ref pX, ref pY);
+                if (_arena.getTile(pX, pY).Blocked)
+                {
+                    blockedAttempts--;
+                    if (blockedAttempts <= 0)
+                        //Consider the spawn to be blocked
+                        return null;
+                    continue;
                 }
 
-                //Navigate to him
-                if (_path == null)
-                    //If we can't find out way to him, just mindlessly walk in his direction for now
-                    steering.steerDelegate = steerForFollowOwner;
-                else
-                    steering.steerDelegate = steerAlongPath;
+                target.positionX = pX;
+                target.positionY = pY;
+                break;
             }
+            return target;
+        }
+
+        public Helpers.ObjectState getHPoint()
+        {
+            Helpers.ObjectState target = new Helpers.ObjectState();
+
+            int blockedAttempts = 30;
+            short pX;
+            short pY;
+            while (true)
+            {
+                IEnumerable<Vehicle> hps = _arena.Vehicles.Where(v => v._type.Id == 468);
+                pX = hps.FirstOrDefault()._state.positionX;
+                pY = hps.FirstOrDefault()._state.positionY;
+
+                target.positionX = pX;
+                target.positionY = pY;
+                break;
+            }
+            return target;
         }
 
         public class Action

@@ -20,7 +20,7 @@ namespace InfServer.Script.GameType_Eol
 {	// Script Class
     /// Provides the interface between the script and arena
     ///////////////////////////////////////////////////////
-    public partial class Script_Eol : Scripts.IScript
+    public class Script_Eol : Scripts.IScript
     {	///////////////////////////////////////////////////
         // Member Variables
         ///////////////////////////////////////////////////
@@ -42,6 +42,7 @@ namespace InfServer.Script.GameType_Eol
         private int _rewardInterval;            //The interval at which we reward for HQs
 
         public EolBoundaries _eol;
+        public HordePoints _hoardps;
 
         //public BotSettings BotSettings;
 
@@ -52,14 +53,19 @@ namespace InfServer.Script.GameType_Eol
         //KOTH
         private Team _victoryKothTeam;			//The team currently winning!
         private int _tickGameLastTickerUpdate;  //The tick at which the ticker was last updated
-        private int _tickGameStarting;			//The tick at which the game began starting (0 == not initiated)
         private long _tickKOTHGameStarting;
-        private long _tickGameStart;				//The tick at which the game started (0 == stopped)
+        private long _tickKOTHGameStart;				//The tick at which the game started (0 == stopped)
         private int _tickEolGameStart;
         private int _tickKothGameStart;
         private int _minPlayers;                //The minimum amount of players needed for a KOTH game
         private long _KothGameCheck;
         private bool _kothGameRunning;
+        private Dictionary<Player, Team> _startTeams;
+        private int _lastKOTHGameCheck;
+
+        //EOL
+        private int _tickGameStarting;			//The tick at which the game began starting (0 == not initiated)
+        private int _tickGameStart;				//The tick at which the game started (0 == stopped)
 
         //CTF
         private int _jackpot;					//The game's jackpot so far
@@ -84,12 +90,11 @@ namespace InfServer.Script.GameType_Eol
         public int _maxX;
         public int _minY;
         public int _maxY;
-        private bool _pointsGameGoing;
-        private int _pointGameTimer;
+        public int _tickLastMinorPoll;
 
         //Scores
         private Dictionary<Player, int> _healingDone;   //Keep track of healing done by players
-        
+
         //KillRewards
         public const int c_baseReward = 5;
         public const double c_pointMultiplier = 2;
@@ -125,6 +130,7 @@ namespace InfServer.Script.GameType_Eol
         }
         private List<Team> _crownTeams;
 
+
         /// Stores our player streak information
         private class PlayerStreak
         {
@@ -134,11 +140,10 @@ namespace InfServer.Script.GameType_Eol
             public int lastKillerCount { get; set; }
         }
 
-        
+
         private Dictionary<string, PlayerStreak> killStreaks;
         private Player lastKiller;
         public bool _bpylonsSpawned;
-        public bool _gameBegun;
         public bool _bbetweengames;
         public bool Min1Timer;
         public bool Min5Timer;
@@ -204,9 +209,9 @@ namespace InfServer.Script.GameType_Eol
         public const int c_defenseRoamPathUpdateInterval = 1000;
         public const int c_chiefPathUpdateInterval = 1000;
         public const int c_defenseDistanceLeeway = 500;			//The maximum distance leeway a bot can be from the team before it is respawned
-        public const int _checkCaptain = 50000;                 //The tick at which we check for a captain  50000
-        public const int _checkEngineer = 35000;                //The tick at which we check for an engineer 70000
-        public const int _checkRoamingCaptain = 140000;          //The tick at which we check for a roaming captain  85000
+        public const int _checkCaptain = 100000;                 //The tick at which we check for a captain  50000
+        public const int _checkEngineer = 55000;                //The tick at which we check for an engineer 70000
+        public const int _checkRoamingCaptain = 12000;          //The tick at which we check for a roaming captain  140000
         public const int _checkRoamingChief = 100000;          //The tick at which we check for a roaming captain  100000
         protected int _tickLastEngineer = 0;                    //Last time we checked for an engineer
         protected int _tickLastCaptain = 0;                     //Last time we checked for a captain
@@ -243,6 +248,19 @@ namespace InfServer.Script.GameType_Eol
         public int _currentRoamCaptains = 0;
         public int _currentRoamChief = 0;
         public int[] _lastPylon;                                //Array of all pylons that are being used
+
+        public static TimeSpan _pvpHappyHourStart = TimeSpan.Zero;
+        public static TimeSpan _pvpHappyHourEnd = TimeSpan.Zero;
+
+        static public bool _bPvpHappyHour;
+
+        private int _lastPvpHappyHourAlert;
+        private int _tickPvpHappyHourStart;
+
+        Dictionary<int, string> startTime;
+        Dictionary<int, string> endTime;
+
+        List<HordePoints> _activehPoints;
 
         //Bot teams
         public Team botTeam1;
@@ -281,7 +299,8 @@ namespace InfServer.Script.GameType_Eol
             _config = _arena._server._zoneConfig;
             _minPlayers = Int32.MaxValue;
             _minPlayersCTF = Int32.MaxValue;
-
+            _activehPoints = new List<HordePoints>();
+            _bPvpHappyHour = false;
             //Load up our gametype handlers
             _eol = new EolBoundaries(_arena, this);
             _tm = new Teams(_arena, this);
@@ -293,6 +312,13 @@ namespace InfServer.Script.GameType_Eol
             Min5Timer = false;
             Min1Send = false;
             Min5Send = false;
+
+            _playerCrownStatus = new Dictionary<Player, PlayerCrownStatus>();
+            _crownTeams = new List<Team>();
+            _startTeams = new Dictionary<Player, Team>();
+
+            startTime = new Dictionary<int, string>();
+            endTime = new Dictionary<int, string>();
 
             foreach (Arena.FlagState fs in _arena._flags.Values)
             {	//Determine the minimum number of players
@@ -306,7 +332,7 @@ namespace InfServer.Script.GameType_Eol
 
             //Headquarters stuff!
             _hqlevels = new int[] { 500, 1000, 2500, 5000, 10000, 15000, 20000, 25000, 30000, 35000 };
-            _hqVehId = 620;
+            _hqVehId = 469;
             _baseXPReward = 25;
             _baseCashReward = 150;
             _basePointReward = 10;
@@ -496,6 +522,105 @@ namespace InfServer.Script.GameType_Eol
             _usedpylons = new Dictionary<int, pylonObject>();
             _lastPylon = null;
 
+            /*startTime.Add(00, "01:00");
+            startTime.Add(01, "02:00");
+            startTime.Add(02, "03:00");
+            startTime.Add(03, "04:00");
+            startTime.Add(04, "05:00");
+            startTime.Add(05, "06:00");
+            startTime.Add(06, "07:00");
+            startTime.Add(07, "08:00");
+            startTime.Add(08, "09:00");
+            startTime.Add(09, "10:00");
+            startTime.Add(10, "11:00");
+            startTime.Add(11, "12:00");
+            startTime.Add(12, "13:00");
+            startTime.Add(13, "14:00");
+            startTime.Add(14, "15:00");
+            startTime.Add(15, "16:00");
+            startTime.Add(16, "17:00");
+            startTime.Add(17, "18:00");
+            startTime.Add(18, "19:00");
+            startTime.Add(19, "20:00");
+            startTime.Add(20, "21:00");
+            startTime.Add(21, "22:00");
+            startTime.Add(22, "23:00");
+            startTime.Add(23, "00:00");
+
+            endTime.Add(00, "02:00");
+            endTime.Add(01, "03:00");
+            endTime.Add(02, "04:00");
+            endTime.Add(03, "05:00");
+            endTime.Add(04, "06:00");
+            endTime.Add(05, "07:00");
+            endTime.Add(06, "08:00");
+            endTime.Add(07, "09:00");
+            endTime.Add(08, "10:00");
+            endTime.Add(09, "11:00");
+            endTime.Add(10, "12:00");
+            endTime.Add(11, "13:00");
+            endTime.Add(12, "14:00");
+            endTime.Add(13, "15:00");
+            endTime.Add(14, "16:00");
+            endTime.Add(15, "17:00");
+            endTime.Add(16, "18:00");
+            endTime.Add(17, "19:00");
+            endTime.Add(18, "20:00");
+            endTime.Add(19, "21:00");
+            endTime.Add(20, "22:00");
+            endTime.Add(21, "23:00");
+            endTime.Add(22, "00:00");
+            endTime.Add(23, "01:00");*/
+
+            startTime.Add(00, "01:00");
+            startTime.Add(01, "02:00");
+            startTime.Add(02, "03:00");
+            startTime.Add(03, "04:00");
+            startTime.Add(04, "05:00");
+            startTime.Add(05, "06:00");
+            startTime.Add(06, "07:00");
+            startTime.Add(07, "08:00");
+            startTime.Add(08, "09:00");
+            startTime.Add(09, "10:00");
+            startTime.Add(10, "11:00");
+            startTime.Add(11, "12:00");
+            startTime.Add(12, "13:00");
+            startTime.Add(13, "14:00");
+            startTime.Add(14, "15:00");
+            startTime.Add(15, "16:00");
+            startTime.Add(16, "17:00");
+            startTime.Add(17, "18:00");
+            startTime.Add(18, "19:00");
+            startTime.Add(19, "20:00");
+            startTime.Add(20, "20:25");
+            startTime.Add(21, "21:25");
+            startTime.Add(22, "22:25");
+            startTime.Add(23, "23:25");
+
+            endTime.Add(00, "02:00");
+            endTime.Add(01, "03:00");
+            endTime.Add(02, "04:00");
+            endTime.Add(03, "05:00");
+            endTime.Add(04, "06:00");
+            endTime.Add(05, "07:00");
+            endTime.Add(06, "08:00");
+            endTime.Add(07, "09:00");
+            endTime.Add(08, "10:00");
+            endTime.Add(09, "11:00");
+            endTime.Add(10, "12:00");
+            endTime.Add(11, "13:00");
+            endTime.Add(12, "14:00");
+            endTime.Add(13, "15:00");
+            endTime.Add(14, "16:00");
+            endTime.Add(15, "17:00");
+            endTime.Add(16, "18:00");
+            endTime.Add(17, "19:00");
+            endTime.Add(18, "20:00");
+            endTime.Add(19, "21:00");
+            endTime.Add(20, "22:00");
+            endTime.Add(21, "22:25");
+            endTime.Add(22, "23:25");
+            endTime.Add(23, "00:25");
 
             return true;
         }
@@ -507,23 +632,94 @@ namespace InfServer.Script.GameType_Eol
         {	//Should we check game state yet?
             int now = Environment.TickCount;
             int playing = _arena.PlayerCount;
+
+            /*
+            bool bPvpHappyHour = isHappyHour(_pvpHappyHourStart, _pvpHappyHourEnd);
+
+            if (!_bPvpHappyHour && now - _lastPvpHappyHourAlert >= 600000 && timeTo(_pvpHappyHourStart).Hours < 1)
+            {
+                TimeSpan remaining = timeTo(_pvpHappyHourStart);
+                _arena.sendArenaMessage(String.Format("&A Pirate Horde will roam in {0} hour(s) & {1} minute(s)",
+                        remaining.Hours, remaining.Minutes), 4);
+
+                _lastPvpHappyHourAlert = now;
+            }
+
+            if (bPvpHappyHour)
+            {
+                _bPvpHappyHour = true;
+
+                if (_tickPvpHappyHourStart == 0)
+                {
+                    _arena.sendArenaMessage(String.Format("&A Pirate Horde is currently roaming Eol"), 4);
+
+                    _tickPvpHappyHourStart = now;
+                }
+
+            }
+            else
+            {
+                _bPvpHappyHour = false;
+                _tickPvpHappyHourStart = 0;
+                IEnumerable<Vehicle> points = _arena.Vehicles.Where(v => v._type.Id == 468);
+                IEnumerable<Vehicle> pbb1 = _arena.Vehicles.Where(v => v._type.Id == 159);
+                IEnumerable<Vehicle> pbb2 = _arena.Vehicles.Where(v => v._type.Id == 160);
+                IEnumerable<Vehicle> pbb3 = _arena.Vehicles.Where(v => v._type.Id == 161);
+
+                if (points.Count() > 0)
+                {
+                    foreach (Vehicle v in points) { v.destroy(true, true); }
+                    foreach (Vehicle v1 in pbb1) { v1.destroy(true, true); }
+                    foreach (Vehicle v2 in pbb2) { v2.destroy(true, true); }
+                    foreach (Vehicle v3 in pbb3) { v3.destroy(true, true); }
+                }
+                setTime();
+            }
+
+
+            if (_bPvpHappyHour) { spawnHorde(now); }
+            */
+
             if (_arena._bGameRunning)
             {
                 _eol.Poll(now);
-            }
-            //Do we have enough people to start a game of KOTH?
-            if (now - _lastGameCheck <= Arena.gameCheckInterval)
-                return true;
-            _lastGameCheck = now;
 
-            if (_arena._bGameRunning && playing < 1)
-            {   //Stop the game!
-                _arena.setTicker(0, 0, 0, "Not Enough Players, Join to start game");
-                //Stop the game
-                _arena.gameEnd();
+                /*
+                if (_bPvpHappyHour)
+                {
+                    if (_activehPoints.Count() > 0)
+                    {
+                        foreach (HordePoints point in _activehPoints)
+                            point.poll(now);
+                    }
+                }*/
+            }
+
+           
+
+            //Do we have enough people to start a game of KOTH?
+            if (now - _lastKOTHGameCheck <= Arena.gameCheckInterval)
+                return true;
+            _lastKOTHGameCheck = now;
+
+            //Do we have enough players to start a game?
+            if ((_tickKOTHGameStart == 0 || _tickKOTHGameStarting == 0) && playing < 5)
+            {	//Stop the game!
+                _arena.setTicker(1, 1, 0, "KOTH - Not Enough Players");
             }
             //Do we have enough players to start a game?
-            else if (!_arena._bGameRunning && _tickGameStart == 0 && _tickGameStarting == 0 && playing >= 1)
+            else if (_tickKOTHGameStart == 0 && _tickKOTHGameStarting == 0 && playing >= 5)
+            {	//Great! Get going
+                _tickKOTHGameStarting = now;
+                _arena.setTicker(1, 1, 15 * 100, "KOTH - Next game: ",
+                    delegate ()
+                    {	//Trigger the game start
+                        startKOTH();
+                    }
+                );
+            }
+
+            if (!_arena._bGameRunning && _tickGameStart == 0 && _tickGameStarting == 0 && playing >= 0)
             {	//Great! Get going
                 _tickGameStarting = now;
                 _arena.setTicker(1, 0, 15 * 100, "Next game: ",
@@ -532,54 +728,8 @@ namespace InfServer.Script.GameType_Eol
                         _arena.gameStart();
                     });
             }
-            //Maybe the game is in progress...
-            else
-            {   //It is!
-                //The change to small points changes needs to be updated based on players in game constantly
-                _pointSmallChange = (int)Math.Ceiling((double)25 / _arena.PlayersIngame.Count());
-                _pointPeriodicChange = 1;
 
-                //Let's update some points!
-                int flagdelay = 60000; //1000 = 1 second 60000
-                if (now - _lastFlagCheck >= flagdelay && _pointsGameGoing)
-                {   //It's time for a flag update
-
-                    //Loop through every flag
-                    foreach (Arena.FlagState fs in _arena._flags.Values)
-                        //Add points for every flag they own
-                        foreach (Team t in _arena.Teams)
-                            if (t == fs.team && _points != null)
-                            _points[t] += _pointPeriodicChange;
-                    //Update our tick
-                    _lastFlagCheck = now;
-                }
-            }
-
-            if(playing <= 5)
-            {
-                //Even out any private teams that are OVER our current limit
-                foreach (Team team in _arena.ActiveTeams)
-                {
-                    List<Player> playersRemoved = new List<Player>();
-
-                    //If they are within our parameter, ignore.
-                    if (team.ActivePlayerCount <= 1)
-                        continue;
-
-                    int numToRemove = team.ActivePlayerCount - 2;
-
-                    for (int i = 0; i < numToRemove; i++)
-                    {
-                        Player rndPlayer = team.ActivePlayers.PickRandom();
-                        if (rndPlayer == null)
-                            continue;
-
-                        pickTeam(rndPlayer);
-                        rndPlayer.sendMessage(0, "You've randomly been moved to a new team to keep teams even. Current team limit is 2");
-                    }
-                }
-            }
-            else if (playing >= 6 && playing <= 15)
+            if (playing <= 5)
             {
                 //Even out any private teams that are OVER our current limit
                 foreach (Team team in _arena.ActiveTeams)
@@ -599,64 +749,63 @@ namespace InfServer.Script.GameType_Eol
                             continue;
 
                         pickTeam(rndPlayer);
-                        rndPlayer.sendMessage(0, "You've randomly been moved to a new team to keep teams even. Current team limit is 2");
+                        rndPlayer.sendMessage(0, "You've randomly been moved to a new team to keep teams even. Current team limit is 3");
+                    }
+                }
+            }
+            else if (playing >= 8 && playing <= 15)
+            {
+                //Even out any private teams that are OVER our current limit
+                foreach (Team team in _arena.ActiveTeams)
+                {
+                    List<Player> playersRemoved = new List<Player>();
+
+                    //If they are within our parameter, ignore.
+                    if (team.ActivePlayerCount <= 1)
+                        continue;
+
+                    int numToRemove = team.ActivePlayerCount - 4;
+
+                    for (int i = 0; i < numToRemove; i++)
+                    {
+                        Player rndPlayer = team.ActivePlayers.PickRandom();
+                        if (rndPlayer == null)
+                            continue;
+
+                        pickTeam(rndPlayer);
+                        rndPlayer.sendMessage(0, "You've randomly been moved to a new team to keep teams even. Current team limit is 4");
                     }
                 }
             }
 
-            if (_pointsGameGoing)
-            {
-                List<Team> notactive = _arena.Teams.Where(t => t.ActivePlayerCount == 0).ToList();
-                foreach (Team t in notactive)
-                {
-                    foreach (Arena.FlagState fs in _arena._flags.Values)
-                        //Remove points when empty
-                        foreach (Team te in notactive)
-                        {
-                            _pointPeriodicChange = _points[te];
-                            if (te == fs.team && _points != null && _pointsGameGoing)
-                                _points[te] -= _pointPeriodicChange;
-                        }
-                }
-            }
+            _maxRoamCaptains = 1;
+            _maxRoamingBots = 30;
 
-         
-            if (playing < 30) //30
+            if (playing < 30)
             {
                 _maxEngineers = 1;
-                _maxRoamCaptains = 1;//1
-                _maxRoamingBots = 10;
                 _maxDefenseBots = 8;
-                _maxRoamChief = 1;
-                _maxRoamingAliens = 10;
             }
-            if (playing >= 30 && playing < 60) //30
+            if (playing >= 30 && playing < 60)
             {
                 _maxEngineers = 2;
-                _maxRoamCaptains = 2;//3
-                _maxRoamingBots = 20;//20
                 _maxDefenseBots = 16;
-                _maxRoamChief = 2;
-                _maxRoamingAliens = 20;
             }
             if (playing >= 60)
             {
                 _maxEngineers = 3;
-                _maxRoamCaptains = 3;//3
-                _maxRoamingBots = 40;//40
                 _maxDefenseBots = 24;
-                _maxRoamChief = 3;
-                _maxRoamingAliens = 30;
             }
-           
-            if (_gameBegun)
+
+            if (_arena._bGameRunning)
             {
                 if (now - _lastFlagReward > 540000 && !Min1Timer) //1 minute
                     foreach (Team player in _arena.ActiveTeams)
                     {
                         foreach (Arena.FlagState fs in _arena._flags.Values)
                         {
-                            if (fs.team != player) {
+                            if (fs.team != player)
+                            {
                                 Min1Timer = true;
                                 continue;
                             }
@@ -675,7 +824,8 @@ namespace InfServer.Script.GameType_Eol
                     {
                         foreach (Arena.FlagState fs in _arena._flags.Values)
                         {
-                            if (fs.team != player) {
+                            if (fs.team != player)
+                            {
                                 Min5Timer = true;
                                 continue;
                             }
@@ -690,7 +840,7 @@ namespace InfServer.Script.GameType_Eol
                         }
                     }
                 if (now - _lastFlagReward > 600000 && Min5Timer && Min1Timer) //10 minutes
-                { 
+                {
                     rewards();
                     Min1Timer = false;
                     Min5Timer = false;
@@ -699,7 +849,7 @@ namespace InfServer.Script.GameType_Eol
                 }
             }
 
-            if ((now - _lastPylonCheck >= 36000000) && _gameBegun == true) //36000000
+            if ((now - _lastPylonCheck >= 36000000) && _arena._bGameRunning) //36000000
             {
                 if (_bpylonsSpawned == false)
                 {
@@ -707,9 +857,8 @@ namespace InfServer.Script.GameType_Eol
                 }
                 _lastPylonCheck = now;
             }
-            //if (now - _eol._tickEolGameStart > 216000000000 && playing > 0)
 
-            if (now - _tickEolGameStart > _KothGameCheck && _eol._gameBegun == true) //test 360000
+            if (now - _tickEolGameStart > _KothGameCheck && _arena._bGameRunning) //test 360000
             {
                 if (_activeCrowns.Count == 0)
                 {
@@ -718,10 +867,10 @@ namespace InfServer.Script.GameType_Eol
                 else
                 {
                     //If KOTH game ongoing then delay resetting of check.
-                    _KothGameCheck = 360000;
+                    _KothGameCheck = 36000;
                 }
                 _tickEolGameStart = now;
-            }            
+            }
 
             //Should we reward yet for HQs?
             if (now - _lastHQReward > _rewardInterval)
@@ -761,8 +910,6 @@ namespace InfServer.Script.GameType_Eol
                             p.Experience += experience;
                             p.sendMessage(0, "&Headquarters - Periodic reward. Level " + _hqs[hq._team].Level + ": Cash=" + cash + " Experience=" + experience + " Points=" + points);
                         }
-
-
                     }
                 }
                 _lastHQReward = now;
@@ -775,7 +922,7 @@ namespace InfServer.Script.GameType_Eol
             if (_minPlayers > playing)
             {
                 if (_playerCrownStatus == null)
-                _playerCrownStatus = new Dictionary<Player, PlayerCrownStatus>();
+                    _playerCrownStatus = new Dictionary<Player, PlayerCrownStatus>();
 
                 _crownTeams = new List<Team>();
             }
@@ -785,7 +932,7 @@ namespace InfServer.Script.GameType_Eol
             {
                 foreach (var p in _playerCrownStatus)
                 {
-                    if ((now > p.Value.expireTime || _victoryKothTeam != null) && p.Value.crown)
+                    if ((now > p.Value.expireTime || _victoryTeam != null) && p.Value.crown)
                     {
                         p.Value.crown = false;
                         Helpers.Player_Crowns(_arena, true, _activeCrowns);
@@ -800,46 +947,44 @@ namespace InfServer.Script.GameType_Eol
                     if (!_crownTeams.Contains(p._team))
                         _crownTeams.Add(p._team);
 
-                if (_crownTeams.Count == 1 || _activeCrowns.Count == 1)
-                {//We have a winning team
-                    _victoryKothTeam = _activeCrowns.First()._team;
-                    _arena.sendArenaMessage("Team " + _victoryKothTeam._name + " is the winner of KOTH!");
-                    kothVictory(_victoryKothTeam);
+                if (_crownTeams.Count == 1)
+                {
+                    _victoryTeam = _activeCrowns.First()._team;
+                    _arena.sendArenaMessage(_victoryTeam._name + " is the winner");
+                    gameVictory(_victoryTeam);
                     return true;
                 }
-                else if (_activeCrowns.Count == 0 && _tickKOTHGameStarting != 0)
-                {//There was a tie
-                    _arena.sendArenaMessage("There was no KOTH winner");
-                    resetKOTH();
+            }
+
+            if (_tickKothGameStart > 0 && _activeCrowns.Count <= 1)
+            {
+                if (_activeCrowns.Count == 1)
+                {
+                    _victoryTeam = _activeCrowns.First()._team;
+                    if (_victoryTeam != null && !_victoryTeam.IsSpec) //Check for team activity
+                    {
+                        //End the game
+                        _arena.sendArenaMessage(_victoryTeam._name + " is the winner");
+                        gameVictory(_victoryTeam);
+                        return true;
+                    }
+                }
+                else //still bugged, no winner
+                {//All our crowners expired at the same time
+                    _arena.sendArenaMessage("There was no winner");
+                    endKOTH();
                     return true;
                 }
+                return true;
             }
             //Update our tickers
             updateTickers();
             UpdateCTFTickers();
             UpdateKillStreaks();
 
-            //Do we have enough players to start a game of KOTH?
-            if ((_tickKothGameStart == 0 || _tickKOTHGameStarting == 0) && playing < 10 && _gameBegun)
-            {	//Stop the game!
-                //_arena.setTicker(1, 2, 0, "Not Enough Players for KOTH");
-                resetKOTH();
-            }
-
-            //Do we have enough players to start a game of KOTH?
-            else if (_tickKothGameStart == 0 && _tickKOTHGameStarting == 0 && playing >= 50 && _gameBegun)
-            {	//Great! Get going
-                _tickKOTHGameStarting = now;
-                _arena.setTicker(1, 2, _config.king.startDelay * 100, "Next KOTH game: ",
-                    delegate ()
-                    {	//Trigger the game start
-                        startKOTH();
-                    }
-                );
-            }
-
+            #region Base Bot Spawning
             #region Captain Spawning
-            if (now - _tickLastCaptain > _checkCaptain && _gameBegun == true)
+            if (now - _tickLastCaptain > _checkCaptain && _arena._bGameRunning)
             {
                 IEnumerable<Vehicle> hqs = _arena.Vehicles.Where(v => v._type.Id == _hqVehId);
                 Player owner = null;
@@ -855,19 +1000,14 @@ namespace InfServer.Script.GameType_Eol
                             _bots = new List<Bot>();
                         Captain captain = null;
 
-                        if (hq._team == botTeam1)
-                            team = botTeam1;
-                        else if (hq._team == botTeam2)
-                            team = botTeam2;
-                        else if (hq._team == botTeam3)
-                            team = botTeam3;
+                        team = botTeam1;
 
                         //See if they have a captain for their HQ, if not spawn one
-                        if (team != null && owner == null && captainBots != null && !captainBots.ContainsKey(team) && hq._team == team)
+                        if (team != null && owner == null && captainBots != null && !captainBots.ContainsKey(team))
                         {//It's a bot team
                             openPoint = findOpenWarpBot(_arena, (short)(hq._state.positionX), (short)(hq._state.positionY), 150);
 
-                            //Keep track of the engineers
+                            //Keep track of the captains
                             if (openPoint != null)
                             {
                                 int id = 437;
@@ -894,7 +1034,7 @@ namespace InfServer.Script.GameType_Eol
             #endregion
 
             #region Base Spawning
-            if (now - _tickLastEngineer > _checkEngineer && _gameBegun == true)
+            if (now - _tickLastEngineer > _checkEngineer && _arena._bGameRunning && playing >= 1)
             {
                 if (_bots == null)
                     _bots = new List<Bot>();
@@ -1007,7 +1147,7 @@ namespace InfServer.Script.GameType_Eol
                                 else if (_hqs[botTeam3] == null)
                                     team = botTeam3;
                                 //else
-                                   // team = botTeam1;
+                                // team = botTeam1;
 
                                 //Find the pylon we are about to destroy and mark it as nonexistent
                                 foreach (KeyValuePair<int, pylonObject> obj in _usedpylons)
@@ -1084,7 +1224,7 @@ namespace InfServer.Script.GameType_Eol
                                 #region bot turrets
 
                                 //Create their HQ
-                                createVehicle(620, 0, 0, team, home); //Build our HQ which will spawn our captain
+                                createVehicle(469, 0, 0, team, home); //Build our HQ which will spawn our captain
                                 _hqs.Create(team);
                                 _hqs[team].Bounty = 10000;
                                 _currentEngineers++;
@@ -1106,10 +1246,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, 0, 132, team, home);
                                         createVehicle(460, 229, -156, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         // createVehicle(453, -35, 35, team, home);
@@ -1127,10 +1267,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, 90, 0, team, home);
                                         createVehicle(460, 195, -100, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         //createVehicle(453, -35, 35, team, home);
@@ -1148,10 +1288,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, 208, -64, team, home);
                                         createVehicle(460, -48, -32, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         //createVehicle(453, -35, 35, team, home);
@@ -1169,10 +1309,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -195, -100, team, home);
                                         createVehicle(460, -195, 100, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         // createVehicle(453, -35, 35, team, home);
@@ -1189,10 +1329,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, 69, 84, team, home);
                                         createVehicle(460, -91, -44, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         //createVehicle(453, -35, 35, team, home);
@@ -1210,10 +1350,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, 75, -50, team, home);
                                         createVehicle(460, 35, 80, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         //createVehicle(453, -35, 35, team, home);
@@ -1231,10 +1371,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -155, -140, team, home);
                                         createVehicle(460, -59, 52, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         //createVehicle(453, -35, 35, team, home);
@@ -1252,10 +1392,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -176, -48, team, home);
                                         createVehicle(460, 128, 48, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         // createVehicle(453, -35, 35, team, home);
@@ -1273,10 +1413,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, 176, 0, team, home);
                                         createVehicle(460, 64, 128, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         //createVehicle(453, -35, 35, team, home);
@@ -1294,10 +1434,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -96, 400, team, home);
                                         createVehicle(460, 96, 112, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //createVehicle(453, 35, 35, team, home);
                                         //createVehicle(453, -35, -35, team, home);
                                         //createVehicle(453, -35, 35, team, home);
@@ -1315,10 +1455,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -48, -144, team, home);
                                         createVehicle(460, 48, 144, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         // createVehicle(453, 35, 35, team, home);
                                         // createVehicle(453, -35, -35, team, home);
                                         // createVehicle(453, -35, 35, team, home);
@@ -1336,10 +1476,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -80, 224, team, home);
                                         createVehicle(460, 112, 224, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //  createVehicle(453, 35, 35, team, home);
                                         //  createVehicle(453, -35, -35, team, home);
                                         // createVehicle(453, -35, 35, team, home);
@@ -1356,10 +1496,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -20, 112, team, home);
                                         createVehicle(460, -20, -112, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //  createVehicle(453, 35, 35, team, home);
                                         //  createVehicle(453, -35, -35, team, home);
                                         //  createVehicle(453, -35, 35, team, home);
@@ -1377,10 +1517,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -272, -50, team, home);
                                         createVehicle(460, 256, 144, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //   createVehicle(453, 35, 35, team, home);
                                         //   createVehicle(453, -35, -35, team, home);
                                         //  createVehicle(453, -35, 35, team, home);
@@ -1398,10 +1538,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, 69, 308, team, home);
                                         createVehicle(460, -75, -76, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //   createVehicle(453, 35, 35, team, home);
                                         //   createVehicle(453, -35, -35, team, home);
                                         //   createVehicle(453, -35, 35, team, home);
@@ -1419,10 +1559,10 @@ namespace InfServer.Script.GameType_Eol
                                         createVehicle(460, -64, 64, team, home);
                                         createVehicle(460, 352, -160, team, home);
                                         //walls
-                                        createVehicle(453, 35, 0, team, home);
-                                        createVehicle(453, 0, 35, team, home);
-                                        createVehicle(453, -35, 0, team, home);
-                                        createVehicle(453, 0, -35, team, home);
+                                        //createVehicle(453, 35, 0, team, home);
+                                        //createVehicle(453, 0, 35, team, home);
+                                        //createVehicle(453, -35, 0, team, home);
+                                        //createVehicle(453, 0, -35, team, home);
                                         //   createVehicle(453, 35, 35, team, home);
                                         //   createVehicle(453, -35, -35, team, home);
                                         //   createVehicle(453, -35, 35, team, home);
@@ -1436,136 +1576,15 @@ namespace InfServer.Script.GameType_Eol
                         }
                         else { addPylons(); }
                     }
-                   
+
                 }
                 _tickLastEngineer = now;
             }
             #endregion
 
-            #region Alien Spawning
-            if (now - _tickLastChief > _checkRoamingChief && _gameBegun == true)
-            {
-                if (_bots == null)
-                    _bots = new List<Bot>();
-
-                if (_currentRoamChief < _maxRoamChief)
-                {
-                    int id = 0;
-
-                    Helpers.ObjectState openPoint = null;
-
-                    Random r1 = new Random();
-                    Helpers.ObjectState targetspawn = new Helpers.ObjectState();
-                    targetspawn.positionX = (short)r1.Next(_minX, _maxX);
-                    targetspawn.positionY = (short)r1.Next(_minY, _maxY);
-
-                    openPoint = new Helpers.ObjectState();
-                    openPoint = findOpenWarpBot(_arena, targetspawn.positionX, targetspawn.positionY, 150);
-
-
-                    Team team = null;
-                    if (!roamingAlienBots.Contains(botTeam7))
-                        team = botTeam7;
-                    else if (!roamingAlienBots.Contains(botTeam8))
-                        team = botTeam8;
-                    else if (!roamingAlienBots.Contains(botTeam9))
-                        team = botTeam9;
-
-                    if (openPoint != null)
-                    {
-                        _arena.sendArenaMessage("@Alien invaders have landed, intent on taking blood. Run for your lives!");
-                        AlienChief Chief = _arena.newBot(typeof(AlienChief), (ushort)200, team, null, openPoint, this) as AlienChief;
-                        _bots.Add(Chief);
-                        _currentRoamChief++;
-                        roamingAlienBots.Add(team);
-                        alienChiefBots.Add(team, 0);
-                        if (alienBots.ContainsKey(team))
-                        { alienBots[team] = 0; }
-                        else
-                        { alienBots.Add(team, 0); }
-                    }
-
-                }
-                _tickLastChief = now;
-            }
-            #endregion
-
-            #region Roaming Captain Spawning
-            if (now - _tickLastRoamingCaptain > _checkRoamingCaptain && _gameBegun == true)
-            {
-                if (_bots == null)
-                    _bots = new List<Bot>();
-                if (_currentRoamCaptains < _maxRoamCaptains)
-                {//They don't have a captain
-
-                    int id = 0;
-
-                    Helpers.ObjectState warpPoint = null;
-                    Helpers.ObjectState openPoint = null;
-                    List<Arena.FlagState> sortedFlags = new List<Arena.FlagState>();
-                    int flagcount = _arena._flags.Values.Where(f => f.team != null).Count();
-                    sortedFlags = _arena._flags.Values.Where(f => f.posX >= _minX && f.posX <= _maxX && f.posY >= _minY && f.posY <= _maxY).ToList();
-
-
-                    //No flags for some reason?
-                    if (flagcount == 0 || _arena._flags == null)
-                    { return false; }
-                    else
-                    {
-                        short indexX = 0;
-                        short indexY = 0;
-
-                        Random r1 = new Random();
-                        Random r2 = new Random();
-                        indexX = (short)r1.Next(_minX, _maxX);
-                        indexY = (short)r2.Next(_minY, _maxY);
-
-                        warpPoint = new Helpers.ObjectState();
-                        warpPoint.positionX = indexX;
-                        warpPoint.positionY = indexY;
-
-                        openPoint = new Helpers.ObjectState();
-
-                        int spawnPos = 0;
-
-                        Random rn = new Random();
-                        int _randPos = rn.Next(1, 2);
-                        spawnPos = _randPos;
-
-                        Random rand = new Random();
-                        short randomoffset = (short)(rand.Next(10, 200));
-
-
-                        openPoint = findOpenWarpBot(_arena, (warpPoint.positionX),(warpPoint.positionY), 150);
-
-                        Team team = null;
-                        if (!roamingCaptianBots.Contains(botTeam4))
-                            team = botTeam4;
-                        else if (!roamingCaptianBots.Contains(botTeam5))
-                            team = botTeam5;
-                        else if (!roamingCaptianBots.Contains(botTeam6))
-                            team = botTeam6;
-
-                        if (openPoint != null)
-                        {
-                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
-                            _arena.sendArenaMessage("$A new Roaming Captain has been deployed to from Pioneer Station to recapture their lost flag.");
-                            _bots.Add(Flagger);
-                            _currentRoamCaptains++;
-                            roamingCaptianBots.Add(team);
-                            capRoamBots.Add(team, 0);
-                            if (roamBots.ContainsKey(team))
-                            { roamBots[team] = 0; }
-                            else
-                            { roamBots.Add(team, 0); }
-                        }
-                    }
-                }
-                _tickLastRoamingCaptain = now;
-            }
-            #endregion
             return true;
         }
+        #endregion
 
         #region Change Sectors
 
@@ -1597,9 +1616,24 @@ namespace InfServer.Script.GameType_Eol
             {
                 player.clearProjectiles();
             }
-            _arena.gameEnd();
-            _server.recycle();
-            
+
+            _bbetweengames = true;
+            foreach (Vehicle v in _arena.Vehicles)
+                if (v._type.Type == VehInfo.Types.Computer)
+                    //Destroy it!
+                    v.destroy(true);
+            _usedpylons.Clear();
+            foreach (Bot bot in _bots)
+                _condemnedBots.Add(bot);
+
+            foreach (Bot bot in _condemnedBots)
+                bot.destroy(true);
+
+            _minX = 0;
+            _maxX = 0;
+            _minY = 0;
+            _maxY = 0;
+
         }
 
         #endregion
@@ -1621,12 +1655,208 @@ namespace InfServer.Script.GameType_Eol
             }
         }
 
+        //Creates a turrent, offsets are from HQ
+        public void createHPVehicle(int id, int x_offset, int y_offset, Team botTeam, Helpers.ObjectState homeloc)
+        {
+            if (homeloc != null && botTeam != null)
+            {
+                VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(id));
+
+                _arena.newVehicle(vehicle, botTeam, null, homeloc);
+            }
+        }
+
+        //Creates a turrent, offsets are from HQ
+        public void createPDB(int id, int x_offset, int y_offset, Team botTeam, Helpers.ObjectState homeloc)
+        {
+            if (homeloc != null && botTeam != null)
+            {
+                VehInfo vehicle = _arena._server._assets.getVehicleByID(Convert.ToInt32(id));
+                Helpers.ObjectState newState = new Protocol.Helpers.ObjectState();
+                newState.positionX = Convert.ToInt16(homeloc.positionX + x_offset);
+                newState.positionY = Convert.ToInt16(homeloc.positionY + y_offset);
+                newState.positionZ = homeloc.positionZ;
+                newState.yaw = homeloc.yaw;
+
+                _arena.newVehicle(vehicle, botTeam, null, newState);
+            }
+        }
+
+        public void spawnHorde(int now)
+        {
+            if (_bPvpHappyHour)
+            {
+                IEnumerable<Vehicle> hps = _arena.Vehicles.Where(v => v._type.Id == 468);
+
+                if (hps.Count() == 0)
+                {
+                    try
+                    {
+                        int blockedAttempts = 30;
+
+                        short pX;
+                        short pY;
+                        Helpers.ObjectState warpPointy = null;
+                        while (true)
+                        {
+                            
+                            Random r1 = new Random();
+                            Random r2 = new Random();
+                            pX = (short)r1.Next(_minX, _maxX);
+                            pY = (short)r2.Next(_minY, _maxY);
+                            CfgInfo.Terrain terrain = _arena.getTerrain(pX, pY);
+
+                            Helpers.randomPositionInArea(_arena, 100, ref pX, ref pY);
+                            if (_arena.getTile(pX, pY).Blocked && (terrain.message != "Roadway/Cement" || terrain.message != "Clear Terrain"))
+                            {
+                                blockedAttempts--;
+                                if (blockedAttempts <= 0)
+                                {
+                                    //Consider the area to be blocked
+                                    warpPointy = new Helpers.ObjectState();
+                                    warpPointy = null;
+                                }
+                                else
+                                {
+                                    warpPointy = new Helpers.ObjectState();
+                                    warpPointy.positionX = pX;
+                                    warpPointy.positionY = pY;
+                                    continue;
+                                }
+                            }
+
+                        }
+                        if (warpPointy != null)
+                        {
+                            Helpers.ObjectState openPoint = null;
+                            openPoint = new Helpers.ObjectState();
+
+                            openPoint = findOpenWarpBot(_arena, (warpPointy.positionX), (warpPointy.positionY), 10);
+
+                            //Vehicle newloc = null;
+                            //newloc._state.positionX = openPoint.positionX;
+                            //newloc._state.positionY = openPoint.positionY;
+
+                            Team teambot = botTeam4;
+                            createHPVehicle(468, 0, 0, teambot, openPoint); //Build our Horde Point
+
+                            Helpers.ObjectState PDB1 = null;
+                            Helpers.ObjectState PDB2 = null;
+                            Helpers.ObjectState PDB3 = null;
+
+                            PDB1 = new Helpers.ObjectState();
+                            PDB1 = findOpenWarpBot(_arena, (openPoint.positionX), (openPoint.positionY), 10);
+                            PDB2 = new Helpers.ObjectState();
+                            PDB2 = findOpenWarpBot(_arena, (openPoint.positionX), (openPoint.positionY), 10);
+                            PDB3 = new Helpers.ObjectState();
+                            PDB3 = findOpenWarpBot(_arena, (openPoint.positionX), (openPoint.positionY), 10);
+                            //Build AA/AG PDB
+                            createPDB(159, -233, 50, teambot, PDB1);
+                            //Build AC PDB
+                            createPDB(160, -264, 284, teambot, PDB2);
+                            //Build ASC PDB
+                            createPDB(161, -464, 484, teambot, PDB3);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.write(TLog.Exception, ex.Message);
+                    }
+
+                    IEnumerable<Vehicle> points = _arena.Vehicles.Where(v => v._type.Id == 468);
+
+
+                    if (points.Count() >= 1)
+                    {
+                        Vehicle newhp = points.FirstOrDefault();
+                        HordePoints hpoint = new HordePoints(_arena, newhp, this);
+                        _activehPoints.Add(hpoint);
+                    }
+                    else
+                    {
+                        _activehPoints.Clear();
+                    }
+
+                }
+                
+
+                if (now - _tickLastRoamingCaptain > _checkRoamingCaptain && _arena._bGameRunning && hps.Count() >= 1)
+                {
+
+                    if (_bots == null)
+                        _bots = new List<Bot>();
+                    if (_currentRoamCaptains < _maxRoamCaptains)
+                    {
+                        int id = 0;
+
+                        Helpers.ObjectState warpPoint = null;
+                        Helpers.ObjectState openPoint = null;
+
+                        short indexX = 0;
+                        short indexY = 0;
+
+                        Random r1 = new Random();
+                        Random r2 = new Random();
+                        indexX = (short)r1.Next(_minX, _maxX);
+                        indexY = (short)r2.Next(_minY, _maxY);
+
+                        warpPoint = new Helpers.ObjectState();
+                        warpPoint.positionX = indexX;
+                        warpPoint.positionY = indexY;
+
+                        openPoint = new Helpers.ObjectState();
+
+                        openPoint = findOpenWarpBot(_arena, (warpPoint.positionX), (warpPoint.positionY), 150);
+
+                        Team team = botTeam4;
+
+                        if (openPoint != null)
+                        {
+                            RoamingCaptain Flagger = _arena.newBot(typeof(RoamingCaptain), (ushort)142, team, null, openPoint, this) as RoamingCaptain;
+                            _arena.sendArenaMessage("$A rogue Captain has arrived in Eol. Intent on killing all and capturing the seismic control unit.");
+                            _bots.Add(Flagger);
+                            _currentRoamCaptains++;
+                            roamingCaptianBots.Add(team);
+                            capRoamBots.Add(team, 0);
+                            if (roamBots.ContainsKey(team))
+                            { roamBots[team] = 0; }
+                            else
+                            { roamBots.Add(team, 0); }
+                        }
+                    }
+                    _tickLastRoamingCaptain = now;
+                }
+            }
+            else
+            {
+                Team team = botTeam4;
+
+                foreach (Bot bot in _bots)
+                {
+                    switch (bot._type.Name)
+                    {
+                        case ("Bot Team - Eta"):
+                            {
+                                _condemnedBots.Add(bot);
+                            }
+                            break;
+                    }
+                }
+
+                foreach (Bot bot in _condemnedBots)
+                    bot.destroy(false);
+
+                roamBots.Remove(team); //Signal to our captain we died
+                roamingCaptianBots.Remove(team);
+                capRoamBots.Remove(team);
+                _currentRoamCaptains--;
+            }
+        }
 
         public void addBot(Player owner, Helpers.ObjectState state, Team team)
         {
             if (_bots == null)
                 _bots = new List<Bot>();
-
 
             int id = 140;
             Helpers.ObjectState openPoint = new Helpers.ObjectState();
@@ -1679,7 +1909,7 @@ namespace InfServer.Script.GameType_Eol
             int id = 144;
 
             Random roamtype = new Random();
-            int _randomroam =roamtype.Next(1, 5);
+            int _randomroam = roamtype.Next(1, 5);
 
             switch (_randomroam)
             {
@@ -1711,55 +1941,6 @@ namespace InfServer.Script.GameType_Eol
                 _bots.Add(dBot);
             }
         }
-
-        public void addBotAlien(Player owner, Helpers.ObjectState state, Team team)
-        {
-            if (_bots == null)
-                _bots = new List<Bot>();
-
-
-            Helpers.ObjectState openPoint = new Helpers.ObjectState();
-
-            openPoint = findOpenWarpBot(_arena, state.positionX, state.positionY, 150);
-
-            int id = 149;
-
-            Random alientype = new Random();
-            int _randomalien = alientype.Next(1, 6);
-
-            switch (_randomalien)
-            {
-                case 1:
-                    id = 149;
-                    break;
-                case 2:
-                    id = 153;
-                    break;
-                case 3:
-                    id = 148;
-                    break;
-                case 4:
-                    id = 154;
-                    break;
-                case 5:
-                    id = 155;
-                    break;
-                case 6:
-                    id = 152;
-                    break;
-            }
-
-            if (owner == null)
-            {
-                if (alienBots.ContainsKey(team))
-                    alienBots[team]++;
-                else
-                    alienBots.Add(team, 0);
-                Aliens alienbot = _arena.newBot(typeof(Aliens), (ushort)id, team, null, openPoint, this, null) as Aliens;
-                _bots.Add(alienbot);
-            }
-        }
-
         #endregion
 
         #region Pylons
@@ -2042,7 +2223,7 @@ namespace InfServer.Script.GameType_Eol
                     _bpylonsSpawned = true;
                 }
             }
-            
+
         }
         #endregion
 
@@ -2059,6 +2240,8 @@ namespace InfServer.Script.GameType_Eol
             _victoryKothTeam = null;
             _crownTeams = null;
 
+            _arena.setTicker(1, 1, 0, "KOTH - Not Enough Players");
+
             //Remove all crowns and clear list of KOTH players
             Helpers.Player_Crowns(_arena, false, _arena.Players.ToList());
             _playerCrownStatus.Clear();
@@ -2073,6 +2256,10 @@ namespace InfServer.Script.GameType_Eol
             _tickKOTHGameStarting = 0;
 
             _victoryKothTeam = null;
+
+            //Remove all crowns and clear list of KOTH players
+            Helpers.Player_Crowns(_arena, false, _arena.Players.ToList());
+            _playerCrownStatus.Clear();
         }
 
         /// <summary>
@@ -2087,7 +2274,7 @@ namespace InfServer.Script.GameType_Eol
             _kothGameRunning = true;
 
             //Let everyone know
-            _arena.sendArenaMessage("Game has started!", 1);
+            _arena.sendArenaMessage("A new KOTH Game has started!", 1);
 
             _crownTeams = new List<Team>();
             _playerCrownStatus = new Dictionary<Player, PlayerCrownStatus>();
@@ -2106,10 +2293,10 @@ namespace InfServer.Script.GameType_Eol
         /// Called when the specified team have won
         /// </summary>
         public void kothVictory(Team victors)
-        {	//Let everyone know          
+        {   //Let everyone know          
             //Calculate the jackpot for each player
             foreach (Player p in victors.AllPlayers)
-            {	//Spectating? 
+            {   //Spectating? 
                 if (p.IsSpectator)
                     continue;
 
@@ -2129,7 +2316,7 @@ namespace InfServer.Script.GameType_Eol
 
             endKOTH();
         }
-        
+
 
         /// <summary>
         /// Updates our tickers for KOTH
@@ -2138,7 +2325,7 @@ namespace InfServer.Script.GameType_Eol
         {
             if (_arena.ActiveTeams.Count() > 1 && _kothGameRunning)
             {//Show players their crown timer using a ticker
-                _arena.setTicker(1, 1, 0, delegate(Player p)
+                _arena.setTicker(1, 1, 0, delegate (Player p)
                 {
                     if (_playerCrownStatus.ContainsKey(p) && _playerCrownStatus[p].crown)
                         return String.Format("Crown Timer: {0}", (_playerCrownStatus[p].expireTime - Environment.TickCount) / 1000);
@@ -2210,7 +2397,7 @@ namespace InfServer.Script.GameType_Eol
         /// Called when a flag changes team
         /// </summary>
         public void onFlagChange(Arena.FlagState flag)
-        {	//Does this team now have all the flags?
+        {   //Does this team now have all the flags?
             Team victoryTeam = flag.team;
 
 
@@ -2219,13 +2406,13 @@ namespace InfServer.Script.GameType_Eol
                     victoryTeam = null;
 
             if (victoryTeam != null)
-            {	//Yes! Victory for them!
+            {   //Yes! Victory for them!
                 _arena.setTicker(1, 1, _config.flag.victoryHoldTime, "Victory in ");
                 _tickNextVictoryNotice = _tickVictoryStart = Environment.TickCount;
                 _victoryTeam = victoryTeam;
             }
             else
-            {	//Aborted?
+            {   //Aborted?
                 if (_victoryTeam != null && !_gameWon)
                 {
                     _tickVictoryStart = 0;
@@ -2253,7 +2440,7 @@ namespace InfServer.Script.GameType_Eol
         public Helpers.ObjectState findOpenWarp(Player player, Arena _arena, short posX, short posY, int radius)
         {
             Helpers.ObjectState warpPoint = null;
-            
+
             try
             {
                 int blockedAttempts = 10;
@@ -2362,13 +2549,17 @@ namespace InfServer.Script.GameType_Eol
 
             switch (spawnPos)
             {
-                case 1: warpPoint.positionX = (short)(warpPoint.positionX - _randomDist);
+                case 1:
+                    warpPoint.positionX = (short)(warpPoint.positionX - _randomDist);
                     break;
-                case 2: warpPoint.positionX = (short)(warpPoint.positionX + _randomDist);
+                case 2:
+                    warpPoint.positionX = (short)(warpPoint.positionX + _randomDist);
                     break;
-                case 3: warpPoint.positionY = (short)(warpPoint.positionY - _randomDist);
+                case 3:
+                    warpPoint.positionY = (short)(warpPoint.positionY - _randomDist);
                     break;
-                case 4: warpPoint.positionY = (short)(warpPoint.positionY + _randomDist);
+                case 4:
+                    warpPoint.positionY = (short)(warpPoint.positionY + _randomDist);
                     break;
             }
 
@@ -2564,48 +2755,11 @@ namespace InfServer.Script.GameType_Eol
         }
 
         /// <summary>
-		/// Called when the specified team have won
-		/// </summary>
-		public void gameVictory(Team victors)
+        /// Called when the specified team have won
+        /// </summary>
+        public void gameVictory(Team victors)
         {
-            int now = Environment.TickCount;
 
-            if (_pointsGameGoing)
-            {
-                //Game is over.
-                _arena.sendArenaMessage(victors._name + " has reached " + _points[victors] + " points!", 13);
-
-                //Lets reward the teams and the MVP!
-                int rpoints = _arena._server._zoneConfig.flag.pointReward * _arena.PlayersIngame.Count();
-                int rcash = _arena._server._zoneConfig.flag.cashReward * _arena.PlayersIngame.Count();
-                int rexperience = _arena._server._zoneConfig.flag.experienceReward * _arena.PlayersIngame.Count();
-
-                //Give higher reward the more points they have
-                foreach (Team t in _arena.ActiveTeams)
-                {
-                    foreach (Player p in t.ActivePlayers)
-                    {   //Reward each player based on his teams performance
-                        int points = _points[t];
-                        double modifier = ((points / 1000) * 2) + 1;
-                        rpoints = Convert.ToInt32(rpoints * modifier);
-                        rcash = Convert.ToInt32(rcash * modifier);
-                        rexperience = Convert.ToInt32(rexperience * modifier);
-                        p.BonusPoints += rpoints;
-                        p.Cash += rcash;
-                        p.Experience += rexperience;
-                        p.sendMessage(0, String.Format("Personal Reward: Points={0} Cash={1} Experience={2}",
-                            rpoints, rcash, rexperience));
-                        p.syncState();
-
-                        foreach (Team te in _arena.Teams)
-                            if (te.ActivePlayerCount == 0)
-                                _points[te] -= points;
-                    }
-                }
-                _pointsGameGoing = false;
-                _pointGameTimer = now;
-            }
-            
         }
 
         public void rewards()
@@ -2808,7 +2962,7 @@ namespace InfServer.Script.GameType_Eol
                     continue;
 
                 if (!sentTo.Contains(p._id))
-                {	//Update the assist bounty
+                {   //Update the assist bounty
                     p.Bounty += BtyShare;
 
                     cashRewards[p._id] = addCash(p, cashRewards[p._id]);
@@ -2865,7 +3019,7 @@ namespace InfServer.Script.GameType_Eol
 
             //Route the kill to the rest of the arena
             foreach (Player p in victim._arena.Players.ToList())
-            {	//As long as we haven't already declared it, send
+            {   //As long as we haven't already declared it, send
                 if (p == null)
                     continue;
 
@@ -2895,6 +3049,61 @@ namespace InfServer.Script.GameType_Eol
 
             return cash;
         }
+
+        public bool isHappyHour(TimeSpan start, TimeSpan end)
+        {
+            // convert datetime to a TimeSpan
+            TimeSpan now = DateTime.Now.TimeOfDay;
+            // see if start comes before end
+            if (start < end)
+                return start <= now && now <= end;
+            // start is after end, so do the inverse comparison
+            return !(end < now && now < start);
+        }
+
+        public TimeSpan timeTo(TimeSpan start)
+        {
+            TimeSpan remaining;
+
+            DateTime nime = DateTime.Now;
+            remaining = start - nime.TimeOfDay;
+
+            if (remaining.TotalHours < 0)
+            {
+                remaining += TimeSpan.FromHours(24);
+                remaining += TimeSpan.FromMinutes(1440);
+            }
+
+            return remaining;
+        }
+
+        public void setTime()
+        {
+            TimeSpan nowTime = DateTime.Now.TimeOfDay;
+            if (_pvpHappyHourEnd > nowTime && nowTime < _pvpHappyHourStart)
+            {
+                DateTime nime = DateTime.Now;
+
+                string cool = nime.TimeOfDay.Hours.ToString();
+
+                int check = int.Parse(cool);
+
+                _pvpHappyHourStart = TimeSpan.Parse(startTime[check]);
+                _pvpHappyHourEnd = TimeSpan.Parse(endTime[check]);
+            }
+        }
+
+        public void firstTime()
+        {
+            DateTime nowTime = DateTime.Now;
+
+            string cool = nowTime.TimeOfDay.Hours.ToString();
+
+            int check = int.Parse(cool);
+            
+            _pvpHappyHourStart = TimeSpan.Parse(startTime[check]);
+            _pvpHappyHourEnd = TimeSpan.Parse(endTime[check]);
+        }
         #endregion
 
         #region game start/end/reset
@@ -2909,8 +3118,9 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStart = Environment.TickCount;
             _tickKothGameStart = Environment.TickCount;
             _tickGameStarting = 0;
+            _lastKOTHGameCheck = 0;
             _tickKOTHGameStarting = 0;
-            _pointGameTimer = Environment.TickCount;
+            _tickLastMinorPoll = Environment.TickCount;
             _tickGameLastTickerUpdate = Environment.TickCount;
             _tickLastEngineer = Environment.TickCount;
             _tickLastCaptain = Environment.TickCount;
@@ -2918,13 +3128,13 @@ namespace InfServer.Script.GameType_Eol
             _tickLastChief = Environment.TickCount;
             _arena.setTicker(0, 0, 60 * 1000, "Next flag reward in : ");
             _lastFlagReward = Environment.TickCount;
-            //_lastPylonCheck = Environment.TickCount;
             _eol.gameStart();
-            //addPylons();
+            _lastPvpHappyHourAlert = 0;
             ResetKiller(null);
             killStreaks.Clear();
             _tickEolGameStart = Environment.TickCount;
-
+            firstTime();
+            _bPvpHappyHour = false;
             foreach (Player p in _arena.Players)
             {
                 PlayerStreak temp = new PlayerStreak();
@@ -2938,24 +3148,7 @@ namespace InfServer.Script.GameType_Eol
             _arena.sendArenaMessage("A new game has started!", _config.flag.victoryWarningBong);
             //Start keeping track of healing
             _healingDone = new Dictionary<Player, int>();
-            _gameBegun = true;
             _bbetweengames = false;
-
-            if (_arena.ActiveTeams.Count() >= 10 && !_pointsGameGoing) //count of teams needs to be 2. set to 1 for test and playing should be 10
-            {
-                int playing = _arena.PlayerCount;
-                if (playing >= 10)
-                {
-                    //Create some points and subscribe to our point modification event
-                    _points = new Points(_arena.Teams, 0, 10000);
-                    _points.PointModify += onPointModify;
-                    _pointsGameGoing = true;
-
-                    //Let everyone know
-                    _arena.sendArenaMessage("!First team to " + _points.MaxPoints + " points wins!", _config.flag.resetBong);
-                    updateTickers();
-                }
-            }
 
             return true;
         }
@@ -2971,49 +3164,45 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _tickKothGameStart = 0;
+            _lastKOTHGameCheck = 0;
             _tickKOTHGameStarting = 0;
             _maxRoamCaptains = 0;
             _maxEngineers = 0;
+            _tickLastMinorPoll = 0;
             _tickLastEngineer = 0;
             _tickLastCaptain = 0;
             _tickLastRoamingCaptain = 0;
             _tickLastChief = 0;
             _tickGameLastTickerUpdate = 0;
             _lastFlagReward = 0;
-            _pointGameTimer = 0;
-            captainBots.Clear();
-            //botCount.Clear();
-            //roamBots.Clear();
-            capRoamBots.Clear();
-            engineerBots.Clear();
-            roamingCaptianBots.Clear();
-            //alienBots.Clear();
-            alienChiefBots.Clear();
-            roamingAlienBots.Clear();
             _currentRoamCaptains = 0;
             _currentRoamChief = 0;
-            //_lastPylonCheck = 0;
+            _lastPvpHappyHourAlert = 0;
             _healingDone = null;
-            _eol.gameEnd();
+            _eol.boundarygameEnd();
             _tickEolGameStart = 0;
-            _gameBegun = false;
             _bbetweengames = true;
-            _pointsGameGoing = false;
-            //_eol.sectUnder30 = "";
-            //_eol.sectUnder60 = "";
             foreach (Vehicle v in _arena.Vehicles)
                 if (v._type.Type == VehInfo.Types.Computer)
                     //Destroy it!
                     v.destroy(true);
             _usedpylons.Clear();
+            _bbetweengames = true;
             foreach (Bot bot in _bots)
                 _condemnedBots.Add(bot);
 
             foreach (Bot bot in _condemnedBots)
                 bot.destroy(true);
 
-            //_condemnedBots.Clear();
-            //_bots.Clear();
+            captainBots.Clear();
+            capRoamBots.Clear();
+            engineerBots.Clear();
+            roamingCaptianBots.Clear();
+            alienChiefBots.Clear();
+            roamingAlienBots.Clear();
+
+            _activehPoints.Clear();
+
             _minX = 0;
             _maxX = 0;
             _minY = 0;
@@ -3034,7 +3223,9 @@ namespace InfServer.Script.GameType_Eol
             _tickGameStart = 0;
             _tickGameStarting = 0;
             _tickKothGameStart = 0;
+            _lastKOTHGameCheck = 0;
             _tickKOTHGameStarting = 0;
+            _tickLastMinorPoll = 0;
             _maxRoamCaptains = 0;
             _maxEngineers = 0;
             _tickLastEngineer = 0;
@@ -3043,42 +3234,36 @@ namespace InfServer.Script.GameType_Eol
             _tickLastChief = 0;
             _tickGameLastTickerUpdate = 0;
             _lastFlagReward = 0;
-            _pointGameTimer = 0;
-            captainBots.Clear();
-            //botCount.Clear();
-            //roamBots.Clear();
-            capRoamBots.Clear();
-            engineerBots.Clear();
-            roamingCaptianBots.Clear();
-            //alienBots.Clear();
-            alienChiefBots.Clear();
-            roamingAlienBots.Clear();
-            _currentRoamCaptains = 0;
-            _currentRoamChief = 0;
-            //_lastPylonCheck = 0;
             _healingDone = null;
-            _eol.gameEnd();
+            _eol.boundarygameReset();
             _tickEolGameStart = 0;
-            _gameBegun = false;
+            _lastPvpHappyHourAlert = 0;
             _bbetweengames = true;
-            _pointsGameGoing = false;
+            _bPvpHappyHour = false;
+            firstTime();
             foreach (Vehicle v in _arena.Vehicles)
                 if (v._type.Type == VehInfo.Types.Computer)
                     //Destroy it!
                     v.destroy(true);
             _usedpylons.Clear();
-            //foreach (Player player in _arena.Players)
-            //{
-            //    _arena.flagResetPlayer(player);
-            //}
             _bbetweengames = true;
             foreach (Bot bot in _bots)
                 _condemnedBots.Add(bot);
 
             foreach (Bot bot in _condemnedBots)
                 bot.destroy(true);
-            //_condemnedBots.Clear();
-            //_bots.Clear();
+
+            captainBots.Clear();
+            capRoamBots.Clear();
+            engineerBots.Clear();
+            roamingCaptianBots.Clear();
+            alienChiefBots.Clear();
+            roamingAlienBots.Clear();
+            _currentRoamCaptains = 0;
+            _currentRoamChief = 0;
+
+            _activehPoints.Clear();
+
             _minX = 0;
             _maxX = 0;
             _minY = 0;
@@ -3213,7 +3398,7 @@ namespace InfServer.Script.GameType_Eol
 
                 else
                     if (_playerCrownStatus.ContainsKey(player))
-                        player.sendMessage(0, "&Crown kills: " + _playerCrownStatus[player].crownKills);
+                    player.sendMessage(0, "&Crown kills: " + _playerCrownStatus[player].crownKills);
             }
 
             if (command.ToLower().Equals("co"))
@@ -3277,11 +3462,11 @@ namespace InfServer.Script.GameType_Eol
                 if (_playerCrownStatus == null)
                     _playerCrownStatus = new Dictionary<Player, PlayerCrownStatus>();
 
-                if (!_playerCrownStatus.ContainsKey(player))
-                {
-                    _playerCrownStatus[player] = new PlayerCrownStatus(false);
-                    Helpers.Player_Crowns(_arena, true, _activeCrowns, player);
-                }
+            if (!_playerCrownStatus.ContainsKey(player))
+            {
+                _playerCrownStatus[player] = new PlayerCrownStatus(false);
+                Helpers.Player_Crowns(_arena, true, _activeCrowns, player);
+            }
 
             //Add them to the list if its not in it
             if (!killStreaks.ContainsKey(player._alias))
@@ -3297,6 +3482,14 @@ namespace InfServer.Script.GameType_Eol
             player.sendMessage(4,
                       "#This zone is currently in Alpha. While it's under development, " +
                       "please leave any bug finds or feedback on our discord, in the Eol Channel. Thanks!");
+
+            /*if (_bHorde)
+                player.sendMessage(0, "&A Pirate horde is currently roaming Eol, Enjoy!");
+            else
+            {
+                TimeSpan remaining = timeTo(_HordeStart);
+                player.sendMessage(0, String.Format("&A Pirate horde will roam in {0} hours & {1} minutes", remaining.Hours, remaining.Minutes));
+            }*/
         }
 
         /// <summary>
@@ -3306,11 +3499,13 @@ namespace InfServer.Script.GameType_Eol
         public void playerLeave(Player player)
         {//Find out if KOTH is enabled
             if (_kothGameRunning)
+            {
                 if (_playerCrownStatus.ContainsKey(player))
-                {//Remove their crown and tell everyone
+                {
                     _playerCrownStatus[player].crown = false;
                     Helpers.Player_Crowns(_arena, false, _noCrowns);
                 }
+            }
             //Destroy all vehicles belonging to him
             foreach (Vehicle v in _arena.Vehicles)
                 if (v._type.Type == VehInfo.Types.Computer && v._creator == player)
@@ -3375,12 +3570,12 @@ namespace InfServer.Script.GameType_Eol
         [Scripts.Event("Vehicle.Death")]
         public bool vehicleDeath(Vehicle dead, Player killer)
         {
-            
+
             //Did they just kill an HQ?!
             if (dead._type.Id == _hqVehId)
             {
                 Team killers = killer._team;
-                
+
 
                 //Check if it was a team kill
                 if (dead._team == killer._team)
@@ -3400,15 +3595,18 @@ namespace InfServer.Script.GameType_Eol
                     }
                 }
 
-                foreach (Player p in killers.ActivePlayers)
-                {   //Calculate some rewards
-                    int points = (int)(_basePointReward * 1.5 * _hqs[dead._team].Level) * 15;
-                    int cash = (int)(_baseCashReward * 1.5 * _hqs[dead._team].Level) * 15;
-                    int experience = (int)(_baseXPReward * 1.5 * _hqs[dead._team].Level) * 15;
-                    p.BonusPoints += points;
-                    p.Cash += cash;
-                    p.Experience += experience;
-                    p.sendMessage(0, "&Headquarters - Your team has destroyed " + dead._team._name + " HQ (" + _hqs[dead._team].Bounty + " bounty)! Cash=" + cash + " Experience=" + experience + " Points=" + points);
+                if (dead._team != killer._team)
+                {
+                    foreach (Player p in killers.ActivePlayers)
+                    {   //Calculate some rewards
+                        int points = (int)(_basePointReward * 1.5 * _hqs[dead._team].Level) * 15;
+                        int cash = (int)(_baseCashReward * 1.5 * _hqs[dead._team].Level) * 15;
+                        int experience = (int)(_baseXPReward * 1.5 * _hqs[dead._team].Level) * 15;
+                        p.BonusPoints += points;
+                        p.Cash += cash;
+                        p.Experience += experience;
+                        p.sendMessage(0, "&Headquarters - Your team has destroyed " + dead._team._name + " HQ (" + _hqs[dead._team].Bounty + " bounty)! Cash=" + cash + " Experience=" + experience + " Points=" + points);
+                    }
                 }
 
                 //Notify the rest of the arena
@@ -3445,8 +3643,8 @@ namespace InfServer.Script.GameType_Eol
                     if (_hqs[killer._team] != null)
                         //Reward his HQ! (Victims bounty + half of own)
                         _hqs[killer._team].Bounty += victim.Bounty + (killer.Bounty / 2);
-                    if (_points != null)
-                        _points[killer._team] += _pointSmallChange;
+                if (_points != null)
+                    _points[killer._team] += _pointSmallChange;
                 //Reward the killers team!
 
 
@@ -3554,7 +3752,7 @@ namespace InfServer.Script.GameType_Eol
             //Update our kill counter
             UpdateDeath(victim, killer);
             return true;
-            
+
         }
         /// <summary>
         /// Triggered when one player has killed another
@@ -3591,16 +3789,51 @@ namespace InfServer.Script.GameType_Eol
             UpdateKiller(killer);
             UpdateDeath(victim, killer);
 
+            //Check if a game is running
+            if (_kothGameRunning && _activeCrowns.Count == 0)
+                return true;
+
+            if (_kothGameRunning)
+            {
+                if (_playerCrownStatus[victim].crown)
+                {   //Incr crownDeaths
+                    _playerCrownStatus[victim].crownDeaths++;
+
+                    if (_playerCrownStatus[victim].crownDeaths >= _config.king.deathCount)
+                    {
+                        //Take it away now
+                        _playerCrownStatus[victim].crown = false;
+                        _noCrowns.Remove(victim);
+                        Helpers.Player_Crowns(_arena, false, _noCrowns);
+                    }
+
+                    if (!_playerCrownStatus[killer].crown)
+                        _playerCrownStatus[killer].crownKills++;
+                }
+
+
+                //Reset their timer
+                if (_playerCrownStatus[killer].crown)
+                    updateCrownTime(killer);
+                else if (_config.king.crownRecoverKills != 0)
+                {   //Should they get a crown?
+                    if (_playerCrownStatus[killer].crownKills >= _config.king.crownRecoverKills)
+                    {
+                        _playerCrownStatus[killer].crown = true;
+                        giveCrown(killer);
+                    }
+                }
+            }
             return true;
         }
-        
+
 
         /// <summary>
         /// Called when the statistical breakdown is displayed
         /// </summary>
         [Scripts.Event("Player.Breakdown")]
         public bool playerBreakdown(Player from, bool bCurrent)
-        {	//Allows additional "custom" breakdown information
+        {   //Allows additional "custom" breakdown information
             //List the best healers by sorting them according to healingdone
             from.sendMessage(0, "#Healer Breakdown");
             if (_healingDone != null && _healingDone.Count > 0)
@@ -3676,9 +3909,9 @@ namespace InfServer.Script.GameType_Eol
         }
 
         /// <summary>
-		/// Handles a player's produce request
-		/// </summary>
-		[Scripts.Event("Player.Produce")]
+        /// Handles a player's produce request
+        /// </summary>
+        [Scripts.Event("Player.Produce")]
         public bool playerProduce(Player player, Computer computer, VehInfo.Computer.ComputerProduct product)
         {
             return true;
@@ -3728,6 +3961,13 @@ namespace InfServer.Script.GameType_Eol
                 killStreaks.Add(player._alias, temp);
             }
 
+            //Send them the crowns..
+            if (!_playerCrownStatus.ContainsKey(player))
+            {
+                _playerCrownStatus[player] = new PlayerCrownStatus(false);
+                Helpers.Player_Crowns(_arena, true, _activeCrowns, player);
+            }
+
         }
         /// <summary>
         /// Triggered when a player wants to unspec and join the game
@@ -3762,12 +4002,34 @@ namespace InfServer.Script.GameType_Eol
                 player.syncState();
             }
 
+            if (_kothGameRunning)
+            {
+                if (!_startTeams.ContainsKey(player))
+                {
+                    _startTeams[player] = null;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Triggered when a player wants to spec and leave the game
+        /// </summary>
+        [Scripts.Event("Player.LeaveGame")]
+        public bool playerLeaveGame(Player player)
+        {
+            if (_playerCrownStatus.ContainsKey(player))
+            {
+                _playerCrownStatus[player].crown = false;
+                Helpers.Player_Crowns(_arena, false, _noCrowns);
+            }
             return true;
         }
         /// <summary>
-		/// Triggered when a player wants to enter a vehicle
-		/// </summary>
-		[Scripts.Event("Player.EnterVehicle")]
+        /// Triggered when a player wants to enter a vehicle
+        /// </summary>
+        [Scripts.Event("Player.EnterVehicle")]
         public bool playerEnterVehicle(Player player, Vehicle vehicle)
         {
             return true;
@@ -3792,9 +4054,9 @@ namespace InfServer.Script.GameType_Eol
         }
 
         /// <summary>
-		/// Triggered when a computer vehicle has killed a player
-		/// </summary>
-		[Scripts.Event("Player.ComputerKill")]
+        /// Triggered when a computer vehicle has killed a player
+        /// </summary>
+        [Scripts.Event("Player.ComputerKill")]
         public bool playerComputerKill(Player victim, Computer computer)
         {
             return true;
@@ -3899,9 +4161,9 @@ namespace InfServer.Script.GameType_Eol
         }
 
         /// <summary>
-		/// Triggered when a bot has killed a player
-		/// </summary>
-		[Scripts.Event("Player.BotKill")]
+        /// Triggered when a bot has killed a player
+        /// </summary>
+        [Scripts.Event("Player.BotKill")]
         public bool playerBotKill(Player victim, Bot bot)
         {
             UpdateDeath(victim, null);
